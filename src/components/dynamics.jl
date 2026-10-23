@@ -351,11 +351,11 @@ function generate_exploitation_block(spec, time_var)
     if isempty(effort_keys) && isempty(removal_keys)
         # If no exploitation is specified, return a zero-initialized vector.
         # This is initialized with the correct numeric type for AD safety.
-        return "exploitation = similar(N_prev, T_num_dyn, spec.hyper.s_N)"
+        return "exploitation = similar(N_prev, eltype(N_prev), $(spec.hyper.s_N))"
     end
     
     # Initialize the exploitation vector.
-    lines = ["exploitation = similar(N_prev, T_num_dyn, spec.hyper.s_N)"]
+    lines = ["exploitation = similar(N_prev, eltype(N_prev), $(spec.hyper.s_N))"]
 
     # Add exploitation from effort-based removals.
     # Assumes a catchability coefficient `q_...` is defined in the model.
@@ -589,7 +589,7 @@ function get_updates(
                 "$(exploitation_logic); " *
                 "N_intermediate = N_prev .+ (growth .* areas) .- exploitation; " *
                 "$(propagator_logic); " *
-                "dyn_field[:, t] = max.(T_num_dyn(0.0), dyn_field[:, t]);\n" *
+                "dyn_field[:, t] = max.($(T_num_dyn)(0.0), dyn_field[:, t]);\n" *
                 "end"
         elseif m.model == "delay_difference"
             exploitation_logic = generate_exploitation_block(spec, "t-1")
@@ -603,7 +603,7 @@ function get_updates(
                 "N_survived = (N_prev .- exploitation) .* exp.(-$(p_names.natural_mortality_rate)); " *
                 "N_intermediate = N_survived .+ (growth .* areas); " *
                 "$(propagator_logic); " *
-                "dyn_field[:, t] = max.(T_num_dyn(0.0), dyn_field[:, t]);\n" *
+                "dyn_field[:, t] = max.($(T_num_dyn)(0.0), dyn_field[:, t]);\n" *
                 "end"
         elseif m.model == "lotka_volterra"
             output_species = get(params, :output_species, :prey)
@@ -620,8 +620,8 @@ function get_updates(
                 "N_pred_prev = dyn_field_predator[:, t-1]; " *
                 "d_prey = ($(p_names.alpha) .* N_prey_prev) .- ($(p_names.beta) .* N_prey_prev .* N_pred_prev); " *
                 "d_pred = ($(p_names.gamma) .* N_prey_prev .* N_pred_prev) .- ($(p_names.delta) .* N_pred_prev); " *
-                "dyn_field_prey[:, t] = max.(T_num_dyn(0.0), N_prey_prev .+ d_prey .+ innovations_matrix_prey[:, t]); " *
-                "dyn_field_predator[:, t] = max.(T_num_dyn(0.0), N_pred_prev .+ d_pred .+ innovations_matrix_predator[:, t]);\n" *
+                "dyn_field_prey[:, t] = max.($(T_num_dyn)(0.0), N_prey_prev .+ d_prey .+ innovations_matrix_prey[:, t]); " *
+                "dyn_field_predator[:, t] = max.($(T_num_dyn)(0.0), N_pred_prev .+ d_pred .+ innovations_matrix_predator[:, t]);\n" *
                 "end\n" *
                 "dyn_field = $(output_species == :prey ? "dyn_field_prey" : "dyn_field_predator")"
         else
