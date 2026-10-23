@@ -2,7 +2,7 @@
 
 julia_version = "1.13.2"
 manifest_format = "2.1"
-project_hash = "6957ebbb445fb8667fb8bd6cb0a0e78ad21c2508"
+project_hash = "df459912b66df46a918d74f6648997c13dd0cbb1"
 
 [[deps.ADTypes]]
 deps = ["PrecompileTools"]
@@ -359,6 +359,13 @@ git-tree-sha1 = "0adb6d8d0a4bae93a07d79c8d59eaf617f4c59da"
 registries = "General"
 uuid = "b2a6c25c-c996-4615-94ab-6e519ffb8690"
 version = "1.1.0"
+
+[[deps.BitIntegers]]
+deps = ["Random"]
+git-tree-sha1 = "091d591a060e43df1dd35faab3ca284925c48e46"
+registries = "General"
+uuid = "c3b6d118-76ef-56ca-8cc7-ebb389d030a1"
+version = "0.3.7"
 
 [[deps.BitTwiddlingConvenienceFunctions]]
 deps = ["Static"]
@@ -737,6 +744,13 @@ git-tree-sha1 = "1a3f97f907e6dd8983b744d2642651bb162a3f7a"
 registries = "General"
 uuid = "dc8bdbbb-1ca9-579f-8c36-e416f6a65cce"
 version = "1.0.2"
+
+[[deps.DBFTables]]
+deps = ["Dates", "Printf", "Tables", "WeakRefStrings"]
+git-tree-sha1 = "25f7e32f980605f8261ed8008418e41f5faec4b1"
+registries = "General"
+uuid = "75c7ada1-017a-5fb6-b8c7-2125ff2d6c93"
+version = "1.2.7"
 
 [[deps.DBInterface]]
 git-tree-sha1 = "265d7f87f329c063cbde41920f9d00713a43cedd"
@@ -1312,10 +1326,11 @@ version = "2.33.0"
     StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [[deps.FixedPointDecimals]]
-git-tree-sha1 = "41372ffde1778294558367a7270450976a8f7079"
+deps = ["BitIntegers", "Parsers"]
+git-tree-sha1 = "41d3a5de0eab320cc04833a373f0fcb3640073d5"
 registries = "General"
 uuid = "fb4d412d-6eee-574d-9565-ede6634db7b0"
-version = "0.4.2"
+version = "0.6.5"
 
 [[deps.FixedPointNumbers]]
 deps = ["Random", "Statistics"]
@@ -1442,10 +1457,10 @@ version = "1.11.0"
 
 [[deps.GEOS_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "fdaf62d2354bb398652ee612d487eb19d74468a6"
+git-tree-sha1 = "10546c852a1c189f7fb2036a50b7e64245412d3c"
 registries = "General"
 uuid = "d604d12d-fa86-5845-992e-78dc15976526"
-version = "3.14.1+0"
+version = "3.15.0+0"
 
 [[deps.GLFW_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll", "libdecor_jll", "xkbcommon_jll"]
@@ -1533,6 +1548,12 @@ version = "1.6.2"
     GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
     Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
     RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
+
+[[deps.GeoPartitioning]]
+deps = ["Clustering", "CoordRefSystems", "DataFrames", "Dates", "DelaunayTriangulation", "Graphs", "JLD2", "LibGEOS", "LinearAlgebra", "NearestNeighbors", "Shapefile", "SparseArrays", "StaticArrays", "Statistics", "StatsBase", "Unitful"]
+path = "C:/Users/Nathalie/projects/GeoPartitioning"
+uuid = "8f39e3ce-31f2-4cbc-add5-3c97d226e5da"
+version = "0.1.0"
 
 [[deps.GettextRuntime_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Libiconv_jll"]
@@ -2937,11 +2958,11 @@ uuid = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 version = "0.12.3"
 
 [[deps.Parsers]]
-deps = ["Dates", "PrecompileTools"]
-git-tree-sha1 = "663e8b48b789916221e0765393b289ca6c88f24e"
+deps = ["Dates", "PrecompileTools", "UUIDs"]
+git-tree-sha1 = "ba0dc8a8a67cacac4842631f960c046e4e563675"
 registries = "General"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "3.0.0"
+version = "2.8.8"
 
 [[deps.PartitionedDistributions]]
 deps = ["Distributions", "FillArrays", "InvertedIndices", "IrrationalConstants", "LinearAlgebra", "LogExpFunctions", "PDMats", "SpecialFunctions", "StatsBase"]
@@ -3556,6 +3577,23 @@ registries = "General"
 uuid = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 version = "1.1.2"
 
+[[deps.Shapefile]]
+deps = ["DBFTables", "DataAPI", "Extents", "GeoFormatTypes", "GeoInterface", "OrderedCollections", "Tables"]
+git-tree-sha1 = "04fba0d9d739d262c3b8b6229f71e6fa519f286c"
+registries = "General"
+uuid = "8e980c4a-a4fe-5da2-b3a7-4b4b0353a2f4"
+version = "0.13.4"
+
+    [deps.Shapefile.extensions]
+    ShapefileMakieExt = "Makie"
+    ShapefileRecipesBaseExt = "RecipesBase"
+    ShapefileZipFileExt = "ZipFile"
+
+    [deps.Shapefile.weakdeps]
+    Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+    RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
+    ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
+
 [[deps.SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
 uuid = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
@@ -4098,11 +4136,11 @@ uuid = "a2964d1f-97da-50d4-b82a-358c7fce9d89"
 version = "1.24.0+0"
 
 [[deps.WeakRefStrings]]
-deps = ["DataAPI", "InlineStrings"]
-git-tree-sha1 = "2a1059acbc918723b8f467c7e4e4342677333ed0"
+deps = ["DataAPI", "InlineStrings", "Parsers"]
+git-tree-sha1 = "0716e01c3b40413de5dedbc9c5c69f27cddfddfc"
 registries = "General"
 uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
-version = "2.0.0"
+version = "1.4.3"
 
 [[deps.WoodburyMatrices]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -4325,7 +4363,7 @@ uuid = "700de1a5-db45-46bc-99cf-38207098b444"
 version = "0.2.8"
 
 [[deps.bstm]]
-deps = ["ADTypes", "AbstractGPs", "AbstractMCMC", "AbstractPPL", "AdvancedVI", "Bijectors", "BlackBoxOptim", "CategoricalArrays", "Clustering", "CoordRefSystems", "DataFrames", "Dates", "DelaunayTriangulation", "DifferentialEquations", "DimensionalData", "Distances", "Distributions", "DrWatson", "DuckDB", "DynamicPPL", "Enzyme", "FFTW", "FillArrays", "FiniteDiff", "FlexiChains", "ForwardDiff", "GLM", "Graphs", "HypothesisTests", "Interpolations", "JLD2", "KernelAbstractions", "KernelFunctions", "LibGEOS", "LinearAlgebra", "LogExpFunctions", "NLopt", "NNlib", "NamedArrays", "NearestNeighbors", "Optim", "Optimisers", "OptimizationNLopt", "OrderedCollections", "PDMats", "PRIMA", "PackageCompiler", "PosteriorStats", "PrecompileTools", "Printf", "Random", "Reexport", "ReverseDiff", "Revise", "SHA", "SparseArrays", "SpecialFunctions", "StaticArrays", "Statistics", "StatsBase", "StatsModels", "Turing", "Unitful", "Wavelets", "WaveletsExt", "Zygote"]
+deps = ["ADTypes", "AbstractGPs", "AbstractMCMC", "AbstractPPL", "AdvancedVI", "Bijectors", "BlackBoxOptim", "CategoricalArrays", "Clustering", "CoordRefSystems", "DataFrames", "Dates", "DelaunayTriangulation", "DifferentialEquations", "DimensionalData", "Distances", "Distributions", "DrWatson", "DuckDB", "DynamicPPL", "Enzyme", "FFTW", "FillArrays", "FiniteDiff", "FlexiChains", "ForwardDiff", "GLM", "GeoPartitioning", "Graphs", "HypothesisTests", "Interpolations", "JLD2", "KernelAbstractions", "KernelFunctions", "LibGEOS", "LinearAlgebra", "LogExpFunctions", "NLopt", "NNlib", "NamedArrays", "NearestNeighbors", "Optim", "Optimisers", "OptimizationNLopt", "OrderedCollections", "PDMats", "PRIMA", "PackageCompiler", "PosteriorStats", "PrecompileTools", "Printf", "Random", "Reexport", "ReverseDiff", "Revise", "SHA", "SparseArrays", "SpecialFunctions", "StaticArrays", "Statistics", "StatsBase", "StatsModels", "Turing", "Unitful", "Wavelets", "WaveletsExt", "Zygote"]
 path = "."
 uuid = "a9d6ec74-ebb6-4ecd-a5cd-9826d4a3476e"
 version = "1.0.0"

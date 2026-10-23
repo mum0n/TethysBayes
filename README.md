@@ -48,7 +48,7 @@ m = @bstm(
   - **Kronecker Interaction (`⊗`)**: Models non-separable space-time interactions (Knorr-Held Types I–IV, $Q_{st} = Q_t \otimes Q_s$).
   - **Pipe Operator (`|>`)**: Constructs Spatially-Varying Coefficients (SVC) and spatially-varying temporal curves (e.g. `covariate |> random(s_idx, model=icar)`).
   - **Composition (`∘`)**: Links intensity fields to point processes (e.g. Log-Gaussian Cox Processes `LGCP`).
-- **Comprehensive Spatial Partitioning Subsystem**:
+- **Comprehensive Spatial Partitioning Subsystem** (provided by the [`GeoPartitioning`](../GeoPartitioning) package, re-exported here):
   - 9 automated spatial discretization algorithms: `:hexagonal` (honeycomb packing), `:cvt` (Lloyd's centroidal relaxation), `:kvt` (K-means density balancing), `:qvt`, `:bvt`, `:hvt`, `:avt`, `:lattice` (fast raster), and spring-layout coordinate inference.
   - Granular sizing and polygon count controls: `target_units`, `exact_units`, `target_area`, `min_area`, `merge_small_polygons`, `prune_empty`, and KD-tree island bridging (`ensure_connected!`).
   - Joint space-time synchronization: `assign_spatiotemporal_units` ($st = (t-1)S + s$).
@@ -333,7 +333,7 @@ There is a lot more functionality available. Comprehensive guides and technical 
 - [**Technical API Reference** (`docs/bstm_api.md`)](docs/bstm_api.md):
   Developer reference for the `ComponentModel` lifecycle, `ParamRegistry`, likelihood distributions, plotting functions, and AST parser.
 - [**Spatial & Spatiotemporal Partitioning Guide** (`docs/bstm_spatial_partitioning.md`)](docs/bstm_spatial_partitioning.md):
-  Mathematical formulations, Lloyd's relaxation, hexagonal geometry, MAUP mitigation, island bridging, cross-mesh transfer operators, and BYM2 spectral scaling.
+  Mathematical formulations, Lloyd's relaxation, hexagonal geometry, MAUP mitigation, island bridging, cross-mesh transfer operators, and BYM2 spectral scaling. The engine itself lives in [`GeoPartitioning`](../GeoPartitioning); this document is mirrored there as `docs/spatial_partitioning.md`.
 - [**Input / Output & Persistence Guide** (`docs/bstm_input_output.md`)](docs/bstm_input_output.md):
   Two-tier persistence architecture, JLD2 model serialization, DuckDB analytical results storage, sample extension, SQL analytics, and GIS export.
 - [**Custom Components & Spatial SEIR Modeling Guide** (`docs/bstm_custom.md`)](docs/bstm_custom.md):

@@ -65,6 +65,40 @@ module bstm
         CoordRefSystems, 
         Unitful
 
+    # Spatial/temporal partitioning engine. Since v1.1.0 this lives in the
+    # standalone GeoPartitioning package (extracted verbatim from the former
+    # src/partitioning.jl); its public API is imported explicitly so every
+    # internal call site and the `export` block further down keep working.
+    # Underscore-prefixed internals of GeoPartitioning (`_compute_scaling_factor`,
+    # `nodes`, `_safe_mean`, `ensure_connected!`, ...) are deliberately NOT
+    # imported: `model.jl` owns `_compute_scaling_factor(evals::Vector{Float64},
+    # rank_deficiency::Int)`, consumed by the smoothness components, and merging
+    # the two same-named method tables would silently change dispatch.
+    using GeoPartitioning:
+        assign_spatial_units,
+        assign_spatial_units_inferred,
+        assign_time_units,
+        assign_spatiotemporal_units,
+        discretize_data,
+        spatial_block_cv,
+        spatial_weights_matrix,
+        spatial_knn_graph,
+        spatial_radius_graph,
+        scaling_factor_bym2,
+        expand_hull,
+        build_hex_mesh_planar,
+        map_point_to_units,
+        lonlat_to_xy_km,
+        xy_km_to_lonlat,
+        libgeos_lattice_adjacency_matrix,
+        get_polygon_area,
+        get_coords_from_geom,
+        estimate_local_kde_with_extrapolation,
+        _detect_xy_columns,
+        _detect_time_column,
+        STANDARD_SPATIAL_COORDINATE_PAIRS,
+        STANDARD_TEMPORAL_CANDIDATES
+
     # Export thin wrappers for essential symbols from demoted packages.
     #
     # NOTE: `plot`, `scatter`, `heatmap` and `theme` used to be exported here, but they
@@ -122,7 +156,8 @@ module bstm
     include( "likelihoods.jl")
     include( "model.jl")
     include( "parameters.jl")
-    include( "partitioning.jl")
+    # `partitioning.jl` was removed: the engine now lives in GeoPartitioning,
+    # imported under `using GeoPartitioning` above.
     include( "pipeline.jl")
     include( "reconstruction.jl")  
     include( "par.jl")
