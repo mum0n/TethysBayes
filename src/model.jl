@@ -4237,6 +4237,8 @@ function bstm_core(
     end
     return model_instance
 end
+
+
 """
     _streamline_multivariate_updates(text::String)::String
 Streamlines generated Turing code for multivariate models to eliminate dynamic array
@@ -4536,6 +4538,8 @@ function resolve_technical_primitive(module_metadata::Dict{Symbol, Any}, M, prio
     constructor_func = COMPONENT_CONSTRUCTORS[model_name]
     return constructor_func(resolved_priors, m_params)
 end
+
+
 """
     _zero_null_modes!(diag_D::AbstractVector, L::AbstractVector; rel_tol=1e-10)
 
@@ -4583,6 +4587,7 @@ function _zero_null_modes!(diag_D::AbstractVector, L::AbstractVector; rel_tol::R
     end
     return null_idx
 end
+
 
 """
     build_structure_template(
@@ -4932,6 +4937,8 @@ function build_structure_template(
         matrix_deflated = Q_deflated
     )
 end
+
+
 """
     _compute_scaling_factor(evals::Vector{Float64}, rank_deficiency::Int)
 Computes a robust scaling factor for a precision matrix from its eigenvalues.
