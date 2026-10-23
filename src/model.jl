@@ -5647,6 +5647,49 @@ end
     bstm_bspline_basis(x::AbstractVector, n_basis::Int, degree::Int; ...)
 Generates a B-spline basis matrix. This version is CPU-only.
 """
+"""
+    extract_model_body(text::String)::String
+
+Extract the body of a `@model` function from its full source text (e.g., obtained
+via CodeTracking.@code_string). Strips the `@model function ... end` wrapper and
+returns only the inner code fragment, suitable for use with `custom(code_fragment=...)`.
+"""
+function extract_model_body(text::String)::String
+    lines = split(text, '\n')
+    depth = 0
+    sig_end = 0
+    in_sig = false
+    for (i, line) in enumerate(lines)
+        if occursin("@model function", line)
+            in_sig = true
+        end
+        if !in_sig
+            continue
+        end
+        for c in line
+            if c == '('
+                depth += 1
+            elseif c == ')'
+                depth -= 1
+                if depth == 0
+                    sig_end = i
+                    break
+                end
+            end
+        end
+        sig_end > 0 && break
+    end
+    sig_end == 0 && error("Could not find end of function signature")
+    body_lines = lines[sig_end+1:end]
+    while !isempty(body_lines) && strip(last(body_lines)) == "end"
+        pop!(body_lines)
+    end
+    while !isempty(body_lines) && strip(first(body_lines)) == ""
+        popfirst!(body_lines)
+    end
+    return join(body_lines, "\n")
+end
+
 function bstm_bspline_basis(x::AbstractVector, n_basis::Int, degree::Int;
     knot_method::Symbol=:quantile, custom_knots::Union{AbstractVector, Nothing}=nothing)
     p = degree
