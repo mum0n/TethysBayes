@@ -430,12 +430,8 @@ function get_effects(
                 local gamma_matrix_cpu
                 if m.method == :spectral
                     diag_D_cpu = 1.0 ./ sqrt.(inner_precomputes.L .+ noise)
-                    if m.model isa Union{ICAR, Besag, RW1, RW2}
-                        diag_D_cpu[1] = 0.0
-                    end
-                    if m.model isa RW2
-                        diag_D_cpu[2] = 0.0
-                    end
+                    # Zero EVERY null direction (a disconnected graph has more than one).
+                    _zero_null_modes!(diag_D_cpu, inner_precomputes.L)
                     gamma_matrix_cpu = inner_precomputes.U * (diag_D_cpu .* innov_matrix_s)
                 else # :cholesky or :cholesky_sparse
                     F_groups_cpu = inner_precomputes.cholesky_factor

@@ -189,7 +189,7 @@ function get_updates(
             local hyper_rho = spec_registry[:$(key)].hyper
             local D_rho = $(p_names.precision_field_scale) ./ sqrt.(hyper_rho.L_rho .+ M.noise)
             if "$(string(m.precision_field_model))" in ["icar", "besag"]
-                D_rho[1] = 0.0
+                _zero_null_modes!(D_rho, hyper_rho.L_rho)
             end
             local rho_field = hyper_rho.U_rho * (D_rho .* $(p_names.innovations_precision))
         """
@@ -301,7 +301,9 @@ function get_effects(
             if m.method == :spectral
                 D_rho_s = rho_sigma_s ./ sqrt.(L_rho_cpu .+ noise)
                 if m.precision_field_model in [:icar, :besag]
-                    D_rho_s[1] = 0.0
+                    for _ni in _zero_null_modes!(zeros(length(L_rho_cpu)), L_rho_cpu)
+                        D_rho_s[_ni] = 0.0
+                    end
                 end
                 rho_field_s = U_rho_cpu * (D_rho_s .* rho_innovations_s)
             else # :cholesky or :cholesky_sparse

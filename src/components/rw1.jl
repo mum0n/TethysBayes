@@ -375,7 +375,10 @@ function get_effects(
                 U_cpu = hyper.U
                 L_cpu = hyper.L
                 diag_D = (sigma_samples_cpu' ./ sqrt.(L_cpu .+ noise))
-                diag_D[1, :] .= 0.0 # Enforce sum-to-zero constraint for all samples
+                # Zero EVERY null direction (a disconnected graph has more than one).
+                for _ni in _zero_null_modes!(zeros(length(L_cpu)), L_cpu)
+                    diag_D[_ni, :] .= 0.0
+                end
                 latent_field_train_cpu = U_cpu * (diag_D .* innovations_samples_cpu')
             else # :cholesky or :cholesky_sparse
                 F_cpu = hyper.cholesky_factor

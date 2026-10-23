@@ -364,7 +364,8 @@ function get_effects(
                 U = spec.hyper.U
                 L = spec.hyper.L
                 inv_sqrt_L = 1.0 ./ sqrt.(L .+ noise)
-                inv_sqrt_L[1] = 0.0 # Enforce sum-to-zero constraint
+                # Zero EVERY null direction (a disconnected graph has more than one).
+                _zero_null_modes!(inv_sqrt_L, L)
                 # Vectorized Level-3 BLAS across all MCMC draws
                 scaled_innov = (inv_sqrt_L .* innovations_samples') .* sigma_samples[:, 1]'
                 effect_k_latent = U * scaled_innov

@@ -232,7 +232,8 @@ function get_updates(
             
             # Construct the diagonal of the spectral transformation matrix D on CPU
             diag_D_cpu = 1.0 ./ sqrt.(hyper.L .+ M.noise)
-            diag_D_cpu[1] = 0.0 # Enforce sum-to-zero constraint
+            # Zero EVERY null direction: a disconnected graph has more than one.
+            _zero_null_modes!(diag_D_cpu, hyper.L)
             
             # Apply the spectral transformation: latent = U * D * z
             structured_effect = hyper.U * (diag_D_cpu .* $(p_names.latent_field))
@@ -433,6 +434,10 @@ function get_effects(
                 weights_struct[1] = 0.0
                 for j in 2:n_latent
                     weights_struct[j] = (rho_val / (L_eig[j] + noise)) / lambda_rho[j]
+                end
+                # Zero every null direction (a disconnected graph has more than one).
+                for _ni in _zero_null_modes!(zeros(length(L_eig)), L_eig)
+                    weights_struct[_ni] = 0.0
                 end
                 
                 theta = U * (weights_struct .* (U' * phi))
