@@ -21,7 +21,7 @@ begin
     using Pkg
     Pkg.activate(normpath(joinpath(@__DIR__, "..")))
     
-    using bstm
+    using TethysBayes
     using PlutoUI
     using DataFrames
     using Random
@@ -32,15 +32,15 @@ begin
     using JLD2
     using Base64
     
-    "Environment active & bstm framework loaded."
+    "Environment active & TethysBayes framework loaded."
 end
 
 # ╔═╡ 735c486c-813a-4a7a-862e-0d7d2b15c99f
 md"""
-# Bayesian Spatio-Temporal Models (`bstm`)
+# Bayesian Spatio-Temporal Models (`TethysBayes`)
 ### Interactive Modeling, Latent Gaussian Markov Fields, and Multi-Tier Orchestration
 
-This interactive Pluto notebook demonstrates Bayesian Spatio-Temporal Modeling with `bstm`,
+This interactive Pluto notebook demonstrates Bayesian Spatio-Temporal Modeling with `TethysBayes`,
 spanning simple univariate spatial processes, intermediate spatio-temporal interactions,
 and complex multi-tier pipelines with interactive Leaflet GIS visualizations.
 
@@ -60,12 +60,17 @@ and complex multi-tier pipelines with interactive Leaflet GIS visualizations.
 md"""
 ### Simulation & Cache Configuration
 
-Long modeling and sampling runs can be bypassed upon notebook initialization by toggling
-`reuse_saved_models`. When selected, precomputed posterior estimates are loaded instantly.
+> ⚠️ **WARNING: STORE OVERWRITE HAZARD**
+>
+> Executing the Bayesian MCMC sampling runs manually will re-estimate posterior chains
+> and overwrite cached lakehouse / model results in `$(nb_datadir)`.
+> By default, `run_model = false` (loading precomputed posterior estimates)
+> to prevent inadvertent overwriting of existing store files.
+> Toggle `run_model = true` only when an explicit manual re-fit and store overwrite is intended.
 """
 
 # ╔═╡ e9775f1c-9bdc-4ec6-a75a-102134906f5b
-@bind reuse_saved_models PlutoUI.CheckBox(default = true)
+@bind run_model PlutoUI.CheckBox(default = false)
 
 # ╔═╡ deb5d9d1-6a0c-4c8b-b36c-f4a7c84046e1
 @bind n_mcmc_samples PlutoUI.Slider(20:20:200, default = 40, show_value = true)
@@ -92,7 +97,7 @@ engaged in outdoor agricultural/forestry occupations $x_i$, adjacency graph $W$,
 
 # ╔═╡ 8d765d75-c0f9-4d88-a9e6-72bba3622e6f
 begin
-    lip_bundle = bstm_data("scottish_lip")
+    lip_bundle = TethysBayes_data("scottish_lip")
     df_lip = lip_bundle.data
     au_lip = lip_bundle.au
     W_lip = au_lip.W
@@ -153,11 +158,11 @@ where:
 begin
     cache_simple_path = joinpath(nb_datadir, "simple_model_samples.jld2")
     
-    simple_results = if reuse_saved_models && isfile(cache_simple_path)
+    simple_results = if !run_model && isfile(cache_simple_path)
         JLD2.load(cache_simple_path, "results")
     else
-        # Define model formula via @bstm DSL
-        m_simple = @bstm(
+        # Define model formula via @tbm DSL
+        m_simple = @tbm(
             likelihood(y_pois, family = poisson, offset = log_E) ~ intercept() + fixed(cov1) + random(s_idx, model = iid),
             df_lip;
             verbose = false
@@ -234,11 +239,11 @@ where:
 begin
     cache_inter_path = joinpath(nb_datadir, "intermediate_bym2_ar1_samples.jld2")
     
-    inter_results = if reuse_saved_models && isfile(cache_inter_path)
+    inter_results = if !run_model && isfile(cache_inter_path)
         JLD2.load(cache_inter_path, "results")
     else
         # Multi-year Scottish Lip dataset structure
-        m_bym2_ar1 = @bstm(
+        m_bym2_ar1 = @tbm(
             likelihood(y_gauss) ~ intercept() + fixed(cov1) + random(s_idx, model = bym2) + random(year, model = ar1),
             df_lip;
             W = W_lip,
@@ -314,7 +319,7 @@ and covariate effects vary non-stationarily over space. We deploy:
 begin
     cache_complex_path = joinpath(nb_datadir, "complex_rff_svc_samples.jld2")
     
-    complex_results = if reuse_saved_models && isfile(cache_complex_path)
+    complex_results = if !run_model && isfile(cache_complex_path)
         JLD2.load(cache_complex_path, "results")
     else
         # Synthesize point coordinates from polygon centroids
@@ -324,7 +329,7 @@ begin
         df_cplx[!, :coord_y] = [cents[row.s_idx][2] for row in eachrow(df_cplx)]
         
         # Fit RFF continuous spatial smoother with SVC on cov1
-        m_cplx = @bstm(
+        m_cplx = @tbm(
             likelihood(y_gauss) ~ intercept() + random(coord_x, coord_y, model = rff, n_features = 20) + random(s_idx, model = bym2),
             df_cplx;
             W = W_lip,
@@ -435,7 +440,7 @@ md"""
 * Besag, J., York, J., & Mollié, A. (1991). *Bayesian image restoration, with applications in spatial statistics*. Ann. Inst. Statist. Math., 43(1), 1-20.
 * Riebler, A., Sørbye, S. H., Simpson, D., & Rue, H. (2016). *An intuitive joint prior for variance parameters in hierarchical models*. Stat. Sci., 31(1), 114-135.
 * Rahimi, A., & Recht, B. (2007). *Random features for large-scale kernel machines*. NeurIPS.
-* Choi, J. S. (2026). *bstm: Bayesian Spatio-Temporal Models for Ecology, Fisheries, and Oceanography*.
+* Choi, J. S. (2026). *TethysBayes: Bayesian Spatio-Temporal Models for Ecology, Fisheries, and Oceanography*.
 """
 
 # ╔═╡ 437ef0ea-865e-48bc-9d0b-09437b0291bf

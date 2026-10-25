@@ -1,8 +1,8 @@
 # ==============================================================================
-# BSTM Test Suite: Errors-in-Variables (EIV) Covariate Priors
+# TethysBayes Test Suite: Errors-in-Variables (EIV) Covariate Priors
 # ==============================================================================
 
-if !@isdefined(bstm_Likelihood)
+if !@isdefined(TethysBayes_Likelihood)
     include(joinpath(@__DIR__, "test_helpers.jl"))
 end
 
@@ -23,7 +23,7 @@ end
         )
 
         # Test constant error_sd
-        m_const_sd = @bstm(
+        m_const_sd = @tbm(
             likelihood(y) ~ intercept() + fixed(x_obs, error_sd=0.4),
             df_eiv, verbose=false
         )
@@ -32,7 +32,7 @@ end
         @test length(m_const_sd.args.M.Xfixed_eiv_map[:x_obs]) == N
 
         # Test column-referenced error_sd
-        m_col_sd = @bstm(
+        m_col_sd = @tbm(
             likelihood(y) ~ intercept() + fixed(x_obs, error_sd=:x_sd),
             df_eiv, verbose=false
         )
@@ -65,7 +65,7 @@ end
         )
 
         # Model with one EIV covariate and one standard fixed effect
-        m_mixed = @bstm(
+        m_mixed = @tbm(
             likelihood(y) ~ intercept() + fixed(substrate, error_sd=:substrate_se) + fixed(temp),
             df_mixed, verbose=false
         )
@@ -79,7 +79,7 @@ end
         @test any(p -> occursin("innovations_eiv_substrate", string(p)), p_names)
 
         # Verify sample extraction
-        eiv_samples = bstm.get_params_matrix(chn, "innovations_eiv_substrate", N)
+        eiv_samples = TethysBayes.get_params_matrix(chn, "innovations_eiv_substrate", N)
         @test size(eiv_samples) == (30, N)
     end
 

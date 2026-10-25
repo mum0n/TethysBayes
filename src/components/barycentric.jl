@@ -109,7 +109,7 @@ function get_precomputes(
     end
     
     knot_points = [Point2D(x, y) for x in kx for y in ky]
-    basis_matrix = bstm_barycentric_basis_2D(coords, knot_points)
+    basis_matrix = TethysBayes_barycentric_basis_2D(coords, knot_points)
     n_knots = length(knot_points)
 
     precomputes = Dict{Symbol, Any}(
@@ -327,7 +327,7 @@ function get_effects(
         coord_vars = get(spec.params, :positional_args, [])
         if all(hasproperty(PS.data, Symbol(v)) for v in coord_vars)
             coords_pred = Matrix{Float64}(PS.data[!, Symbol.(coord_vars)])
-            B_pred = bstm_barycentric_basis_2D(coords_pred, spec.hyper.knots)
+            B_pred = TethysBayes_barycentric_basis_2D(coords_pred, spec.hyper.knots)
             vcat(B_train, B_pred)
         else
             @warn "Prediction coordinates not found for Barycentric component $(spec.key). Returning effects for training data only."
@@ -559,7 +559,7 @@ function _delaunay_triangulation(points::Vector{Point2D})
 end
 
 """
-    bstm_barycentric_basis_2D(coords::AbstractMatrix, knots::Vector{Point2D})
+    TethysBayes_barycentric_basis_2D(coords::AbstractMatrix, knots::Vector{Point2D})
 
 Generates a 2D barycentric basis matrix based on a Delaunay triangulation of knot points.
 
@@ -573,7 +573,7 @@ v1.0.0
 # Returns
 - A sparse basis matrix of size `(N, length(knots))`.
 """
-function bstm_barycentric_basis_2D(coords::AbstractMatrix, knots::Vector{Point2D})
+function TethysBayes_barycentric_basis_2D(coords::AbstractMatrix, knots::Vector{Point2D})
     n_obs = size(coords, 1)
     n_knots = length(knots)
     B = spzeros(Float64, n_obs, n_knots)

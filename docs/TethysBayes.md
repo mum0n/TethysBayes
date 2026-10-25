@@ -1,13 +1,13 @@
 ---
-title: "The BSTM Framework: A Comprehensive Architectural & Methodological Overview"
+title: "The TethysBayes Framework: A Comprehensive Architectural & Methodological Overview"
 format: html
 ---
 
-# The BSTM Framework: A Comprehensive Architectural & Methodological Overview
+# The TethysBayes Framework: A Comprehensive Architectural & Methodological Overview
 
 ## 1. Introduction
 
-The **Bayesian Spatio-Temporal Modeling (`bstm`)** framework provides a composable, formula-driven probabilistic programming interface for complex hierarchical, spatial, temporal, and spatiotemporal models in Julia. Built on top of [Turing.jl](https://github.com/TuringLang/Turing.jl) and the Julia scientific computing ecosystem, `bstm` bridges the gap between the intuitive, high-level modeling syntax of tools like R's `brms` / `INLA` and the computational speed and flexibility of modern probabilistic programming languages.
+The **Bayesian Spatio-Temporal Modeling (`TethysBayes`)** framework provides a composable, formula-driven probabilistic programming interface for complex hierarchical, spatial, temporal, and spatiotemporal models in Julia. Built on top of [Turing.jl](https://github.com/TuringLang/Turing.jl) and the Julia scientific computing ecosystem, `TethysBayes` bridges the gap between the intuitive, high-level modeling syntax of tools like R's `brms` / `INLA` and the computational speed and flexibility of modern probabilistic programming languages.
 
 ### Core Architectural Principles:
 
@@ -18,7 +18,7 @@ The **Bayesian Spatio-Temporal Modeling (`bstm`)** framework provides a composab
 3. **Automatic Differentiability (AD-First)**:
    All component constructors and latent transformations are designed for Automatic Differentiation compatibility, eliminating numerical bottlenecks in gradient-based samplers like NUTS.
 4. **End-to-End Workflow Integration**:
-   `bstm` centralizes the entire modeling lifecycle: continuous spatial discretization $\to$ topological graph extraction $\to$ prior predictive checking $\to$ adaptive block-sampling $\to$ posterior parameter reconstruction $\to$ analytical SQL querying $\to$ spatial block cross-validation $\to$ Bayesian DAG pipeline $\to$ cross-mesh resharding $\to$ hierarchical cut-posterior simulation $\to$ continuous field inference with flexible projection kernels $\to$ visualization.
+   `TethysBayes` centralizes the entire modeling lifecycle: continuous spatial discretization $\to$ topological graph extraction $\to$ prior predictive checking $\to$ adaptive block-sampling $\to$ posterior parameter reconstruction $\to$ analytical SQL querying $\to$ spatial block cross-validation $\to$ Bayesian DAG pipeline $\to$ cross-mesh resharding $\to$ hierarchical cut-posterior simulation $\to$ continuous field inference with flexible projection kernels $\to$ visualization.
 
 ```
                                ┌────────────────────────────────────────────────────────┐
@@ -36,14 +36,14 @@ The **Bayesian Spatio-Temporal Modeling (`bstm`)** framework provides a composab
                                                            │
                                                            ▼
                                ┌────────────────────────────────────────────────────────┐
-                               │  Declarative Formula Specification: @bstm(...)         │
+                               │  Declarative Formula Specification: @tbm(...)         │
                                │  likelihood(y, family=poisson) ~ intercept() +         │
                                │  random(s_idx, model=bym2) ⊗ random(year, model=ar1)   │
                                └───────────────────────────┬────────────────────────────┘
                                                            │
                                                            ▼
                                ┌────────────────────────────────────────────────────────┐
-                               │  Code Assembly & Parameter Registry: bstm_config       │
+                               │  Code Assembly & Parameter Registry: TethysBayes_config       │
                                │  (Precision matrices, bases, scaling factors)          │
                                └───────────────────────────┬────────────────────────────┘
                                                            │
@@ -56,7 +56,7 @@ The **Bayesian Spatio-Temporal Modeling (`bstm`)** framework provides a composab
                                                            ▼
                                ┌────────────────────────────────────────────────────────┐
                                │  Diagnostics & Post-Processing:                        │
-                               │  model_results_comprehensive / bstm_plots / choropleth │
+                               │  model_results_comprehensive / TethysBayes_plots / choropleth │
                                └────────────────────────────────────────────────────────┘
 ```
 
@@ -64,12 +64,12 @@ The **Bayesian Spatio-Temporal Modeling (`bstm`)** framework provides a composab
 
 ## 2. The Formula Interface
 
-The `@bstm` macro provides a concise, unquoted formula DSL that parses mathematical relationships into an Abstract Syntax Tree (AST).
+The `@tbm` macro provides a concise, unquoted formula DSL that parses mathematical relationships into an Abstract Syntax Tree (AST).
 
 ### 2.1. Basic Syntax
 
 ```julia
-m = @bstm(
+m = @tbm(
     likelihood(outcome, family=..., modifiers...) ~
         intercept() +
         fixed(covariate, ...) +
@@ -172,7 +172,7 @@ $$
 
 ```julia
 # Knorr-Held Type IV interaction: Structured space (ICAR) evolving over smooth time (AR1)
-@bstm(
+@tbm(
     likelihood(cases, family=poisson) ~ 
         intercept() + 
         random(s_idx, model=icar) ⊗ random(year, model=ar1),
@@ -186,13 +186,13 @@ The pipe operator routes covariates through latent fields to create spatially or
 
 ```julia
 # Spatially Varying Coefficient (SVC): The impact of poverty varies across regions
-@bstm(
+@tbm(
     likelihood(y) ~ intercept() + (poverty |> random(s_idx, model=icar)),
     df, W=W
 )
 
 # Spatially Varying Temporal Curve: A seasonal P-spline curve whose shape varies across space
-@bstm(
+@tbm(
     likelihood(y) ~ intercept() + (random(s_idx, model=icar) |> random(month, model=pspline)),
     df, W=W
 )
@@ -200,7 +200,7 @@ The pipe operator routes covariates through latent fields to create spatially or
 
 ### 3.3. Declarative Multi-Equation Coupling (`:primary => ..., :proxy => ...`)
 
-High-fidelity models often integrate auxiliary, low-fidelity proxies (such as satellite retrievals or coarse numerical simulations). Rather than nesting formula strings, `bstm` supports declarative multi-equation pair syntax:
+High-fidelity models often integrate auxiliary, low-fidelity proxies (such as satellite retrievals or coarse numerical simulations). Rather than nesting formula strings, `TethysBayes` supports declarative multi-equation pair syntax:
 
 $$
 \boldsymbol{\eta}_{\text{primary}} = \mathbf{X}_{\text{hi}} \boldsymbol{\beta}_{\text{hi}} + \sum_k f_k(\mathbf{s}, t) + \rho \cdot \boldsymbol{\eta}_{\text{proxy}}[\mathcal{M}]
@@ -208,7 +208,7 @@ $$
 
 ```julia
 # Declarative multi-equation system with unquoted Julia formulas and observation mapping
-model = @bstm(
+model = @tbm(
     :primary => (
         formula = likelihood(pm25_ground) ~ 1 + fixed(elev) + transfer(:satellite),
         data    = df_ground
@@ -226,7 +226,7 @@ model = @bstm(
 
 ## 4. Comprehensive Component Catalog
 
-`bstm` organizes over 45 statistical and physical components across five structural families:
+`TethysBayes` organizes over 45 statistical and physical components across five structural families:
 
 ### 4.1. Discrete Spatial GMRF Models
 
@@ -287,7 +287,7 @@ Continuous point coordinates $(s_x, s_y)$ can be discretized into discrete areal
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                    BSTM Spatial Partitioning Methodologies                      │
+│                    TethysBayes Spatial Partitioning Methodologies                      │
 ├──────────────────────────┬────────────────────────────┬─────────────────────────┤
 │ 1. Geometric Voronoi     │ 2. Density-Adaptive        │ 3. Regular Grids        │
 │  - :cvt (Lloyd's energy) │  - :kvt (K-means balanced) │  - :hexagonal (Uniform) │
@@ -324,7 +324,7 @@ Synchronizes spatial areal units ($s \in 1\dots S$) and temporal intervals ($t \
 
 ## 6. Prior Specification Architecture, Penalized Complexity (`:pcpriors`) & Distributional Choices
 
-`bstm` implements a principled, three-tier hierarchical prior resolution engine:
+`TethysBayes` implements a principled, three-tier hierarchical prior resolution engine:
 1. **Local Parameter In-line Overrides** (Highest Precedence): e.g. `random(s_idx, model=bym2, sigma=(1.0, 0.01), rho=Beta(2, 2))`.
 2. **Global Overrides Dictionary**: Passed via `hyperpriors=Dict(:sigma => Exponential(1.0), :bym2_rho => Beta(1, 1))`.
 3. **Automated Prior Schemes (`prior_scheme`)**: Pre-calibrated scheme presets:
@@ -334,7 +334,7 @@ Synchronizes spatial areal units ($s \in 1\dots S$) and temporal intervals ($t \
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                    BSTM Prior Hierarchy Resolution                              │
+│                    TethysBayes Prior Hierarchy Resolution                              │
 ├──────────────────────────┬────────────────────────────┬─────────────────────────┤
 │ 1. Local Formula Call    │ 2. Global Hyperpriors Dict │ 3. Prior Scheme Presets │
 │  - sigma = (1.0, 0.01)   │  - :icar_sigma => ...      │  - :pcpriors (Default)  │
@@ -371,7 +371,7 @@ Penalized Complexity (PC) priors (Simpson et al., 2017) provide an axiomatic fra
 
    meaning: *"The prior probability that the effect scale exceeds $U$ is only $\alpha$ (e.g., 1% or 5%)."*
 
-#### Mathematical Quantile Formulations in `bstm`
+#### Mathematical Quantile Formulations in `TethysBayes`
 
 * **Standard Deviation & Scale ($\sigma, \kappa$)**:
   - *Base Model*: $\sigma = 0$ (no latent variation).
@@ -413,7 +413,7 @@ Penalized Complexity (PC) priors (Simpson et al., 2017) provide an axiomatic fra
 
 ## 7. Sampling, Inference & Sampler Optimization
 
-`bstm` provides a multi-paradigm inference engine combining composite Gibbs partitioning, gradient-based HMC/NUTS, gradient-free slice sampling, and variational approximations.
+`TethysBayes` provides a multi-paradigm inference engine combining composite Gibbs partitioning, gradient-based HMC/NUTS, gradient-free slice sampling, and variational approximations.
  
 Though MCMC sampling is our gold-standard, we also have other
 optimization-based options that can be worth considering. All of these
@@ -540,7 +540,7 @@ map_res = optimize(m, MAP())
 
 ### 7.2. Theoretical Foundations & Considerations for NUTS Parameter Tuning
 
-In high-dimensional spatial and spatiotemporal Bayesian models, default unconstrained sampler heuristics often encounter severe pathologies during warmup. `bstm` addresses these using principles from Hamiltonian dynamics, symplectic geometry, and spectral graph theory.
+In high-dimensional spatial and spatiotemporal Bayesian models, default unconstrained sampler heuristics often encounter severe pathologies during warmup. `TethysBayes` addresses these using principles from Hamiltonian dynamics, symplectic geometry, and spectral graph theory.
 
 #### A. Initial Step Size ($\epsilon$) Pre-Conditioning & Bounds
 * **The Failure Mode of Standard Search**: Turing's default `find_good_stepsize` initializes $\epsilon$ by doubling/halving until a single leapfrog acceptance probability is $\approx 0.5$. In high-dimensional spatial fields (e.g., $S = 500$ areas), steep local gradients at initial values frequently cause $\epsilon$ to collapse to $10^{-6} - 10^{-8}$, triggering maximum tree-depth stalls (1024 leapfrog steps per sample), or explode to $10^2$, causing immediate divergence.
@@ -583,7 +583,7 @@ In high-dimensional spatial and spatiotemporal Bayesian models, default unconstr
   3. **Metric / Mass Matrix ($M$) Estimation**:
      - *Diagonal Metric*: Estimating coordinate marginal variances $\sigma_i^2$ scales as $\mathcal{O}(\sqrt{D})$.
      - *Dense Metric*: Estimating the $D(D+1)/2$ full covariance entries requires at least $3D - 5D$ draws for well-conditioned empirical covariance inversion.
-* **The `bstm` Principled Formula (`adaptation_steps = :auto`)**:
+* **The `TethysBayes` Principled Formula (`adaptation_steps = :auto`)**:
 
   $$
   N_{\text{adapt}}^{\text{diag}}(D) = \operatorname{clamp}\left(150 + 25 \sqrt{D}, \; 100, \; 1000\right)
@@ -637,7 +637,7 @@ println("WAIC: ", res.metrics.waic)
 
 ```julia
 # 1. Generate full diagnostic and spatial effect plots
-plots_res = bstm_plots(res; au=st_res.au_spatial, save_dir="output/plots")
+plots_res = TethysBayes_plots(res; au=st_res.au_spatial, save_dir="output/plots")
 display(plots_res.plots[:spatial])
 
 # 2. Spatial Adjacency Graph & Polygon Tessellation
@@ -652,31 +652,31 @@ model_results_plots(res)
 
 ### 8.3. Model State & Analytical Database Persistence and Sampling Updating (`src/input_output.jl`)
 
-`bstm` uses a two-tier decoupled architecture:
+`TethysBayes` uses a two-tier decoupled architecture:
 - **JLD2 (`.jld2`)**: Full serialization of live Turing model states (`m`), data, and MCMC chains (`chn`).
 - **DuckDB (`.duckdb`)**: Embedded relational analytical database storing normalized performance metrics, parameter stats, predictions, and plot datasets for zero-copy SQL analytics.
 
 ```julia
 # 1. Save unified bundle (.jld2 and .duckdb)
-save_bstm_bundle("runs/model_bym2", m, chn, res; au=st_res.au_spatial)
+save_TethysBayes_bundle("runs/model_bym2", m, chn, res; au=st_res.au_spatial)
 
 # 2. Query results with SQL via DuckDB
 df_high_risk = query_duckdb("runs/model_bym2.duckdb", 
     "SELECT * FROM plot_data_latent_field_spatial WHERE latent_field_mean > 1.2 ORDER BY latent_field_mean DESC")
 
 # 3. Reload model and extend sampling with more iterations
-bundle = load_bstm_bundle("runs/model_bym2")
+bundle = load_TethysBayes_bundle("runs/model_bym2")
 chn_extended = extend_sampling(bundle.model, bundle.chain, 500; progress=false)
 ```
 
 ### 8.4. Modular DAG Pipeline & Cross-Mesh Resharding (`src/pipeline.jl`)
 
-The `bstm_pipeline` orchestrator coordinates multi-tier cut-posterior models, transferring
+The `TethysBayes_pipeline` orchestrator coordinates multi-tier cut-posterior models, transferring
 spatial fields across mismatched irregular polygonal tessellations via geometric linear
 transfer operators ($P \in \mathbb{R}^{N_{\text{dest}} \times N_{\text{src}}}$):
 
 ```julia
-pipe_res = bstm_pipeline(
+pipe_res = TethysBayes_pipeline(
     :depth     => (formula = "likelihood(depth) ~ intercept() + random(s_x, s_y, model=rff)", data = df_bathy, derivatives = [:slope, :curvature, :bpi]),
     :substrate => (formula = "likelihood(grain) ~ intercept() + fixed(depth_mu, error_sd=:depth_sd) + random(s_idx, model=bym2)", data = df_sub, au = au_sub),
     :biology   => (formula = "likelihood(catch, family=gamma) ~ intercept() + fixed(grain_mu, error_sd=:grain_sd) + random(s_idx, model=bym2)", data = df_bio, au = au_master);
@@ -692,7 +692,7 @@ aspects, profile/planform curvatures, and circular Bessel Bathymetric Position I
 ($\text{BPI}_r$) directly across `RFF`, `SpectralGP`, `WaveletGP`, `SPDE`, `PSpline`, and `TPS`:
 
 ```julia
-derivs = bstm_surface_derivatives(m_depth, chn_depth, query_coords; metrics=[:slope, :curvature, :bpi], radii=[10.0, 25.0])
+derivs = TethysBayes_surface_derivatives(m_depth, chn_depth, query_coords; metrics=[:slope, :curvature, :bpi], radii=[10.0, 25.0])
 ```
 
 ### 8.6. Mechanistic Movement & Mark-Recapture Telemetry (`src/movement.jl`)
@@ -703,7 +703,7 @@ The advective drift velocity $\mathbf{v} \propto \nabla \text{HSI}$ is driven by
 surfaces with functional relationships (`:exponential`, `:linear`, or `:logistic`):
 
 ```julia
-m_mov = @bstm(
+m_mov = @tbm(
     likelihood(density, family=poisson) ~ 
         intercept() + 
         movement(
@@ -720,17 +720,17 @@ m_mov = @bstm(
 
 For comprehensive guides, see:
 - [**Integrated Hierarchical Workflows & ADR Telemetry** (`docs/hierarchical_workflow/hierarchical_workflow.md`)](hierarchical_workflow/hierarchical_workflow.md)
-- [**Spatial & Spatiotemporal Partitioning Guide** (`docs/bstm_spatial_partitioning.md`)](bstm_spatial_partitioning.md)
-- [**Input / Output & Persistence Guide** (`docs/bstm_input_output.md`)](bstm_input_output.md)
-- [**Custom Components & Spatial SEIR Modeling Guide** (`docs/bstm_custom.md`)](bstm_custom.md)
-- [**Technical API Reference** (`docs/bstm_api.md`)](bstm_api.md)
+- [**Spatial & Spatiotemporal Partitioning Guide** (`docs/TethysBayes_spatial_partitioning.md`)](TethysBayes_spatial_partitioning.md)
+- [**Input / Output & Persistence Guide** (`docs/TethysBayes_input_output.md`)](TethysBayes_input_output.md)
+- [**Custom Components & Spatial SEIR Modeling Guide** (`docs/TethysBayes_custom.md`)](TethysBayes_custom.md)
+- [**Technical API Reference** (`docs/TethysBayes_api.md`)](TethysBayes_api.md)
 
 ---
 
 ## 9. Complete Runnable Example: End-to-End Spatiotemporal Modeling
 
 ```julia
-using bstm, DataFrames, Random, Plots
+using TethysBayes, DataFrames, Random, Plots
 
 # 1. Simulate point-referenced epidemiological data
 rng = MersenneTwister(42)
@@ -758,7 +758,7 @@ df.s_idx = st_data.s_idx
 df.year_idx = st_data.t_idx
 
 # 3. Define and fit hierarchical BYM2 + AR1 + Fixed Effects model
-m = @bstm(
+m = @tbm(
     likelihood(y, family=poisson) ~
         intercept() +
         fixed(elevation) +

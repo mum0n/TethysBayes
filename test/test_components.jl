@@ -1,8 +1,8 @@
 # ==============================================================================
-# BSTM Test Suite: ComponentModel Interface, NNGP, and MCAR
+# TethysBayes Test Suite: ComponentModel Interface, NNGP, and MCAR
 # ==============================================================================
 
-if !@isdefined(bstm_Likelihood)
+if !@isdefined(TethysBayes_Likelihood)
     include(joinpath(@__DIR__, "test_helpers.jl"))
 end
 
@@ -10,26 +10,26 @@ end
     # Test IID Component
     @testset "IID Component" begin
         N_obs, N_levels = 100, 10
-        m_iid = bstm.IID(Distributions.Exponential(1.0), :noncentered)
+        m_iid = TethysBayes.IID(Distributions.Exponential(1.0), :noncentered)
         
         mock_M_ds = Dict(:data => DataFrame(grouping_covariate=repeat(1:N_levels,
             inner=N_obs ÷ N_levels)[1:N_obs]))
         mock_mod_data = Dict(:variables => :grouping_covariate)
         
         mock_M_pc = (data=mock_M_ds[:data],)
-        res_pc = bstm.get_precomputes(m_iid, mock_M_pc, mock_mod_data)
+        res_pc = TethysBayes.get_precomputes(m_iid, mock_M_pc, mock_mod_data)
         @test hasproperty(res_pc, :n_latent) || res_pc == NamedTuple()
 
         mock_M_priors = (technical=(component_levels=Dict(:grouping_covariate => N_levels),),)
         mock_spec_priors = mock_spec(:grouping_covariate)
-        priors_str = bstm.get_priors(m_iid, mock_spec_priors, "univariate", nothing,
+        priors_str = TethysBayes.get_priors(m_iid, mock_spec_priors, "univariate", nothing,
             mock_M_priors)
         @test contains(priors_str, "sigma_grouping_covariate ~ Exponential(1.0)")
         @test contains(priors_str, "innovations_grouping_covariate ~ MvNormal(zeros(T,")
 
         mock_M_updates = (technical=(component_indices=Dict(:grouping_covariate => mock_M_ds[:data].grouping_covariate),), model_arch="univariate")
         mock_spec_updates = mock_spec(:grouping_covariate)
-        updates_str = bstm.get_updates(m_iid, mock_spec_updates, "univariate", nothing,
+        updates_str = TethysBayes.get_updates(m_iid, mock_spec_updates, "univariate", nothing,
             mock_M_updates)
         @test contains(updates_str, "latent_field_grouping_covariate = innovations_grouping_covariate .* sigma_grouping_covariate")
         @test contains(updates_str, "view(latent_field_grouping_covariate,")
@@ -39,7 +39,7 @@ end
         mock_M_effects = (technical=(component_indices=Dict(:grouping_covariate => mock_M_ds[:data].grouping_covariate),), model_arch="univariate")
         mock_spec_effects = mock_spec(:grouping_covariate)
         
-        effects_result = bstm.get_effects(m_iid, mock_chain_effects, mock_spec_effects,
+        effects_result = TethysBayes.get_effects(m_iid, mock_chain_effects, mock_spec_effects,
             (outcomes_N=1, model_arch="univariate", technical=mock_M_effects.technical),
             nothing)
         @test size(effects_result.structured[1]) == (N_obs, 10)
@@ -49,7 +49,7 @@ end
     @testset "Leroux Component" begin
         N_areas, N_obs = 10, 100
         W_leroux = create_chain_adj_matrix(N_areas)
-        m_leroux = bstm.Leroux(Distributions.Beta(1, 1), Distributions.Exponential(1.0),
+        m_leroux = TethysBayes.Leroux(Distributions.Beta(1, 1), Distributions.Exponential(1.0),
             :spectral)
 
         mock_M_ds = Dict(:data => DataFrame(s_idx=repeat(1:N_areas,
@@ -57,13 +57,13 @@ end
         mock_mod_data = Dict(:variables => :s_idx)
 
         mock_M_pc = (data=mock_M_ds[:data], W=W_leroux, s_N=N_areas)
-        precomputes = bstm.get_precomputes(m_leroux, mock_M_pc, mock_mod_data)
+        precomputes = TethysBayes.get_precomputes(m_leroux, mock_M_pc, mock_mod_data)
         @test hasproperty(precomputes, :Q_template)
         @test size(precomputes.Q_template) == (N_areas, N_areas)
 
         mock_M_priors = (technical=(component_levels=Dict(:s_idx => N_areas),),)
         mock_spec_priors = mock_spec(:s_idx, precomputes)
-        priors_str = bstm.get_priors(m_leroux, mock_spec_priors, "univariate", nothing,
+        priors_str = TethysBayes.get_priors(m_leroux, mock_spec_priors, "univariate", nothing,
             mock_M_priors)
         @test contains(priors_str, "sigma_s_idx ~ Exponential(1.0)")
         @test contains(priors_str, "rho_s_idx ~ Beta(1.0, 1.0)")
@@ -71,7 +71,7 @@ end
 
         mock_M_updates = (technical=(component_indices=Dict(:s_idx => repeat(1:N_areas,
             inner=N_obs ÷ N_areas)[1:N_obs]), ), model_arch="univariate")
-        updates_str = bstm.get_updates(m_leroux, mock_spec_priors, "univariate", nothing,
+        updates_str = TethysBayes.get_updates(m_leroux, mock_spec_priors, "univariate", nothing,
             mock_M_updates)
         @test contains(updates_str, "latent_field_s_idx = hyper.U * (diag_D .* innovations_s_idx)")
         @test contains(updates_str, "eta = eta .+ view(latent_field_s_idx, M.s_idx)")
@@ -80,7 +80,7 @@ end
     # Test GP Component
     @testset "GP Component" begin
         N_obs, N_dims = 100, 2
-        m_gp = bstm.GP(Distributions.Gamma(2, 0.5), Distributions.Exponential(1.0), "se",
+        m_gp = TethysBayes.GP(Distributions.Gamma(2, 0.5), Distributions.Exponential(1.0), "se",
             :noncentered)
         
         mock_M_ds = Dict(:data => DataFrame(x=rand(N_obs), y=rand(N_obs)))
@@ -88,20 +88,20 @@ end
             N_dims)))
 
         mock_M_pc = (data=mock_M_ds[:data],)
-        precomputes = bstm.get_precomputes(m_gp, mock_M_pc, mock_mod_data)
+        precomputes = TethysBayes.get_precomputes(m_gp, mock_M_pc, mock_mod_data)
         @test hasproperty(precomputes, :n_latent)
         @test precomputes.n_latent == N_obs
 
         mock_M_priors = (technical=(component_levels=Dict(),),)
         mock_spec_priors = mock_spec(:x_y, precomputes)
-        priors_str = bstm.get_priors(m_gp, mock_spec_priors, "univariate", nothing,
+        priors_str = TethysBayes.get_priors(m_gp, mock_spec_priors, "univariate", nothing,
             mock_M_priors)
         @test contains(priors_str, "sigma_x_y ~ Exponential(1.0)")
         @test contains(priors_str, "length_scale_x_y ~ Gamma(2.0, 0.5)")
         @test contains(priors_str, "innovations_x_y ~ MvNormal(zeros(T, 100), I)")
 
         mock_M_updates = (technical=(component_indices=Dict(),), model_arch="univariate")
-        updates_str = bstm.get_updates(m_gp, mock_spec_priors, "univariate", nothing,
+        updates_str = TethysBayes.get_updates(m_gp, mock_spec_priors, "univariate", nothing,
             mock_M_updates)
         @test contains(updates_str, "latent_field_x_y = F_gp.L * innovations_x_y")
         @test contains(updates_str, "eta = eta .+ latent_field_x_y")
@@ -110,26 +110,26 @@ end
     # Test Harmonic Component
     @testset "Harmonic Component" begin
         N_obs, N_time, n_harm, period = 120, 12, 2, 12.0
-        m_harm = bstm.Harmonic(n_harm, Distributions.Exponential(1.0),
+        m_harm = TethysBayes.Harmonic(n_harm, Distributions.Exponential(1.0),
             Distributions.Beta(1, 1), period, :twocoefficient)
         
         mock_M_ds = Dict(:data => DataFrame(month=rand(1:N_time, N_obs)))
         mock_mod_data = Dict(:variables => :month)
 
         mock_M_pc = (data=mock_M_ds[:data], N_time=N_time)
-        precomputes = bstm.get_precomputes(m_harm, mock_M_pc, mock_mod_data)
+        precomputes = TethysBayes.get_precomputes(m_harm, mock_M_pc, mock_mod_data)
         @test hasproperty(precomputes, :u_N)
         @test precomputes.u_N == N_time
 
         mock_M_priors = (technical=(component_levels=Dict(:month => N_time),),)
         mock_spec_priors = mock_spec(:month, precomputes)
-        priors_str = bstm.get_priors(m_harm, mock_spec_priors, "univariate", nothing,
+        priors_str = TethysBayes.get_priors(m_harm, mock_spec_priors, "univariate", nothing,
             mock_M_priors)
         @test contains(priors_str, "beta_cos_month ~ filldist(Normal(0.0, 1.0), 2)")
         @test contains(priors_str, "beta_sin_month ~ filldist(Normal(0.0, 1.0), 2)")
 
         mock_M_updates = (technical=(component_indices=Dict(:month => mock_M_ds[:data].month),), model_arch="univariate")
-        updates_str = bstm.get_updates(m_harm, mock_spec_priors, "univariate", nothing,
+        updates_str = TethysBayes.get_updates(m_harm, mock_spec_priors, "univariate", nothing,
             mock_M_updates)
         @test contains(updates_str, "latent_field_month = zeros(T_num, u_N_val)")
         @test contains(updates_str, "eta = eta .+ view(latent_field_month, u_idx_val)")
@@ -143,7 +143,7 @@ end
         s_y = [0.2, 0.5, 0.1, 0.8, 0.9, 0.3, 0.6, 0.7],
         y = randn(MersenneTwister(42), 8)
     )
-    m_nngp = @bstm(likelihood(y, family=gaussian) ~ intercept() + random(s_x, model=nngp,
+    m_nngp = @tbm(likelihood(y, family=gaussian) ~ intercept() + random(s_x, model=nngp,
         m=3, kernel=:exponential), df_nngp, verbose=false)
     @test m_nngp isa DynamicPPL.Model
     chn_nngp = sample(m_nngp, MH(), 20; progress=false)
@@ -155,7 +155,7 @@ end
         y = rand(MersenneTwister(42), 0:10, 8)
     )
     W_4 = [0 1 1 0; 1 0 0 1; 1 0 0 1; 0 1 1 0]
-    m_mcar = @bstm(likelihood(y, family=poisson) ~ intercept() + random(s_idx, model=mcar,
+    m_mcar = @tbm(likelihood(y, family=poisson) ~ intercept() + random(s_idx, model=mcar,
         K=2), df_mcar, W=W_4, verbose=false)
     @test m_mcar isa DynamicPPL.Model
     chn_mcar = sample(m_mcar, MH(), 20; progress=false)
@@ -178,7 +178,7 @@ end
         # built and a prior draw taken. Anything stronger needs the component's own fixture,
         # and asking for that here would mean duplicating every testset. Its job is to make an
         # *unbuildable* component impossible to miss.
-        registered = sort(collect(keys(bstm.COMPONENT_TYPE_REGISTRY)))
+        registered = sort(collect(keys(TethysBayes.COMPONENT_TYPE_REGISTRY)))
         @test !isempty(registered)
 
         # Components that legitimately need a required argument, or whose reconstruction is
@@ -188,7 +188,7 @@ end
         # `mcar` and `warp` were on this list until they were diagnosed one by one, and both
         # turned out to be small bugs rather than missing implementations: `mcar` fed a pinned
         # `sigma` to `_distribution_to_string`, and `warp` referenced the runtime-only name
-        # `spec_registry` from `bstm`'s own scope. Diagnosing beat assuming, again.
+        # `spec_registry` from `TethysBayes`'s own scope. Diagnosing beat assuming, again.
         #
         # `spacetime` is a space-time model and needs a temporal column this fixture does not
         # have. It looked buildable in a diagnostic that happened to supply one -- a reminder
@@ -225,10 +225,10 @@ end
             f = "likelihood(depth, family=gaussian) ~ intercept() + " *
                 "random(idx, model=$model, sigma=1.0)"
             ok = try
-                m = bstm.bstm_core(f, ds; W = Ws, verbose = false)
+                m = TethysBayes.TethysBayes_core(f, ds; W = Ws, verbose = false)
                 # A prior draw is the cheapest thing that exercises the generated body, where
                 # the helper allowlist, the code templates and the binding names all have to
-                # resolve. `bstm_core` alone would not touch any of them.
+                # resolve. `TethysBayes_core` alone would not touch any of them.
                 sample(MersenneTwister(3), m, Prior(), 5; progress = false)
                 true
             catch
@@ -250,35 +250,35 @@ end
 
         @testset "band lengths sum to the resolution" begin
             for res in (4, 8, 16, 32, 64)
-                lengths = bstm._wavelet_decomposition_lengths(res)
+                lengths = TethysBayes._wavelet_decomposition_lengths(res)
                 # One approximation band, then level l carries 2^(l-1) coefficients.
                 @test lengths[1] == 1
-                @test lengths[2:end] == [2^(l - 1) for l in 1:bstm._wavelet_max_level(res)]
+                @test lengths[2:end] == [2^(l - 1) for l in 1:TethysBayes._wavelet_max_level(res)]
                 # Length-preserving transform: the bands must tile the grid exactly, or
                 # `innovations .* sqrt.(scale_variances)` is a dimension mismatch.
                 @test sum(lengths) == res
-                @test length(bstm._wavelet_scale_indices_1d(res)) == res
-                @test bstm._wavelet_max_level(res) == trailing_zeros(res)
+                @test length(TethysBayes._wavelet_scale_indices_1d(res)) == res
+                @test TethysBayes._wavelet_max_level(res) == trailing_zeros(res)
             end
         end
 
         @testset "coarsest-first, no negative scales" begin
-            idx = bstm._wavelet_scale_indices_1d(16)
+            idx = TethysBayes._wavelet_scale_indices_1d(16)
             @test idx == [0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4]
             # The approximation band is index 0; fine bands must be larger, never negative.
             # The old loop `max_lvl - (i - 1)` produced negative indices for the later bands,
             # which inflated their variances above sigma^2 for any alpha > 0.
             @test minimum(idx) == 0
-            @test maximum(idx) == bstm._wavelet_max_level(16)
+            @test maximum(idx) == TethysBayes._wavelet_max_level(16)
             @test issorted(idx)
         end
 
         @testset "bands match the library's own basis functions" begin
-            WV = bstm.Wavelets
+            WV = TethysBayes.Wavelets
             wt = WV.wavelet(WV.WT.db4)
             for res in (8, 16)
-                max_lvl = bstm._wavelet_max_level(res)
-                idx = bstm._wavelet_scale_indices_1d(res)
+                max_lvl = TethysBayes._wavelet_max_level(res)
+                idx = TethysBayes._wavelet_scale_indices_1d(res)
                 # L1/Linf is constant within a scale band, so this checks the assignment
                 # against the basis rather than against a restatement of the same formula.
                 # Compared with a tolerance: the values agree to ~1e-15 but not bitwise.
@@ -296,7 +296,7 @@ end
         end
 
         @testset "power law decays towards fine scales" begin
-            idx = bstm._wavelet_scale_indices_1d(16)
+            idx = TethysBayes._wavelet_scale_indices_1d(16)
             for alpha in (0.5, 1.5, 3.0)
                 var = 1.0 .* (2.0 .^ (-alpha .* idx))
                 for lvl in 0:(maximum(idx) - 1)
@@ -306,19 +306,19 @@ end
         end
 
         @testset "2-D index direction agrees with 1-D" begin
-            s2 = reshape(bstm._get_wavelet_scale_indices_2d(16), 16, 16)
+            s2 = reshape(TethysBayes._get_wavelet_scale_indices_2d(16), 16, 16)
             # Residual approximation is the coarsest block; the first (largest) detail
             # subband is the finest. The old code inverted both.
             @test s2[1, 1] == 0
-            @test all(s2[1:8, 9:16] .== maximum(bstm._get_wavelet_scale_indices_2d(16)))
-            @test minimum(bstm._get_wavelet_scale_indices_2d(16)) == 0
+            @test all(s2[1:8, 9:16] .== maximum(TethysBayes._get_wavelet_scale_indices_2d(16)))
+            @test minimum(TethysBayes._get_wavelet_scale_indices_2d(16)) == 0
         end
 
         @testset "basis is orthonormal and analysis/synthesis is exact" begin
-            WV = bstm.Wavelets
+            WV = TethysBayes.Wavelets
             wt = WV.wavelet(WV.WT.db4)
             for res in (8, 16)
-                max_lvl = bstm._wavelet_max_level(res)
+                max_lvl = TethysBayes._wavelet_max_level(res)
                 Phi = zeros(res, res)
                 for j in 1:res
                     e = zeros(res); e[j] = 1.0
@@ -333,7 +333,7 @@ end
         @testset "non-power-of-2 resolution is rejected" begin
             d = DataFrame(x = collect(1.0:16))
             d.depth = 9.0 .+ 3.0 .* sin.(d.x ./ 3.0)
-            @test_throws Exception bstm.bstm_core(
+            @test_throws Exception TethysBayes.TethysBayes_core(
                 "likelihood(depth, family=gaussian) ~ intercept() + " *
                 "random(x, model=waveletgp, resolution=17, wavelet=db4)", d; verbose = false)
         end
@@ -347,12 +347,12 @@ end
                 (DataFrame(x = collect(1.0:16), y = collect(1.0:16) ./ 2),
                     "random(x, y, model=waveletgp, sigma=1.0, resolution=16, wavelet=db4)"))
                 dd.depth = 9.0 .+ 3.0 .* sin.(dd.x ./ 3.0)
-                m = bstm.bstm_core(
+                m = TethysBayes.TethysBayes_core(
                     "likelihood(depth, family=gaussian) ~ intercept() + " * expr, dd;
                     verbose = false)
                 spec = m.args.M.components[1]
                 chn = sample(MersenneTwister(3), m, Prior(), 20; progress = false)
-                eff = bstm.get_effects(spec.component_obj, chn, spec, m.args.M, nothing)
+                eff = TethysBayes.get_effects(spec.component_obj, chn, spec, m.args.M, nothing)
                 S = eff.structured[1]
                 @test all(isfinite, S)
                 @test any(abs.(S) .> 1e-8)
@@ -367,7 +367,7 @@ end
             for w in (:db2, :db4, :db6, :db8, :haar, :coif2, :coif4, :sym4, :sym8)
                 d = DataFrame(x = collect(1.0:16))
                 d.depth = 9.0 .+ 3.0 .* sin.(d.x ./ 3.0)
-                m = bstm.bstm_core(
+                m = TethysBayes.TethysBayes_core(
                     "likelihood(depth, family=gaussian) ~ intercept() + " *
                     "random(x, model=waveletgp, resolution=16, wavelet=$(QuoteNode(w)))", d;
                     verbose = false)

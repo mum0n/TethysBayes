@@ -46,7 +46,7 @@ where:
 # Inputs
 - **Required**:
   - A spatial index variable (e.g., `s_idx`, `hex_id`) passed to `random()`.
-  - An adjacency matrix `W` passed as a keyword argument to `@bstm(..., W=W)`.
+  - An adjacency matrix `W` passed as a keyword argument to `@tbm(..., W=W)`.
 - **Optional (in `random()` call)**:
   - `n_scales`: `Int`, number of detail scales ``J`` (default: `4`).
   - `order`: `Int`, Chebyshev polynomial degree ``M`` (default: `25`).
@@ -102,7 +102,7 @@ function get_precomputes(m::GraphWavelet, M::NamedTuple, mod_data::Dict)::NamedT
     if !hasproperty(M, :W) || !isa(M.W, AbstractMatrix) || isempty(M.W)
         error(
             "GraphWavelet component '$(mod_data[:key])' requires an adjacency matrix `W` " *
-            "passed to `@bstm(..., W=W)`."
+            "passed to `@tbm(..., W=W)`."
         )
     end
 

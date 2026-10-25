@@ -1,8 +1,8 @@
 # ==============================================================================
-# BSTM Test Suite: Analytical Surface Derivatives & Topographic Metrics
+# TethysBayes Test Suite: Analytical Surface Derivatives & Topographic Metrics
 # ==============================================================================
 
-if !@isdefined(bstm_Likelihood)
+if !@isdefined(TethysBayes_Likelihood)
     include(joinpath(@__DIR__, "test_helpers.jl"))
 end
 
@@ -15,7 +15,7 @@ end
         zxx = [0.0]
         zyy = [0.0]
         zxy = [0.0]
-        topo_flat = bstm.compute_topographic_metrics(zx, zy, zxx, zyy, zxy)
+        topo_flat = TethysBayes.compute_topographic_metrics(zx, zy, zxx, zyy, zxy)
         @test topo_flat.slope_gradient[1] ≈ 0.0 atol=1e-6
         @test topo_flat.slope_degrees[1] ≈ 0.0 atol=1e-6
         @test topo_flat.aspect_degrees[1] == -1.0 # Flat surface aspect
@@ -24,14 +24,14 @@ end
         # Test tilted plane: z(x, y) = 3x + 4y (gradient = (3, 4), slope = 5.0)
         zx_tilt = [3.0]
         zy_tilt = [4.0]
-        topo_tilt = bstm.compute_topographic_metrics(zx_tilt, zy_tilt, zxx, zyy, zxy)
+        topo_tilt = TethysBayes.compute_topographic_metrics(zx_tilt, zy_tilt, zxx, zyy, zxy)
         @test topo_tilt.slope_gradient[1] ≈ 5.0 atol=1e-6
         @test topo_tilt.slope_degrees[1] ≈ atan(5.0) * (180.0 / pi) atol=1e-4
         @test 0.0 <= topo_tilt.aspect_degrees[1] <= 360.0
 
         # Test parabolic bowl: z(x, y) = x^2 + y^2 at (1, 1)
         # zx = 2, zy = 2, zxx = 2, zyy = 2, zxy = 0 -> laplacian = 4.0
-        topo_bowl = bstm.compute_topographic_metrics([2.0], [2.0], [2.0], [2.0], [0.0])
+        topo_bowl = TethysBayes.compute_topographic_metrics([2.0], [2.0], [2.0], [2.0], [0.0])
         @test topo_bowl.slope_gradient[1] ≈ sqrt(8.0) atol=1e-6
         @test topo_bowl.laplacian[1] ≈ 4.0 atol=1e-6
         @test topo_bowl.profile_curvature[1] < 0.0 # Curving upward in direction of slope
@@ -47,7 +47,7 @@ end
 
         df_bathy = DataFrame(s_x = x_pts, s_y = y_pts, depth = z_true)
 
-        m_rff = @bstm(
+        m_rff = @tbm(
             likelihood(depth) ~ intercept() + random(s_x, s_y, model=rff, n_features=25),
             df_bathy, verbose=false
         )
@@ -59,7 +59,7 @@ end
             s_y = [30.0, 50.0, 70.0]
         )
 
-        deriv_res = bstm_surface_derivatives(
+        deriv_res = TethysBayes_surface_derivatives(
             m_rff, chn_rff, query_coords;
             metrics=[:slope, :curvature, :bpi],
             radii=[5.0, 15.0],
@@ -102,14 +102,14 @@ end
         z_true = [150.0 - 0.5 * x + 0.3 * y + randn() * 0.5 for (x, y) in zip(x_pts, y_pts)]
         df_gp = DataFrame(s_x = x_pts, s_y = y_pts, depth = z_true)
 
-        m_sgp = @bstm(
+        m_sgp = @tbm(
             likelihood(depth) ~ intercept() + random(s_x, s_y, model=spectral_gp, resolution=16),
             df_gp, verbose=false
         )
         chn_sgp = sample(m_sgp, NUTS(20, 0.65), 40; progress=false)
 
         query_coords = Matrix{Float64}([40.0 40.0; 60.0 60.0])
-        sgp_derivs = bstm_surface_derivatives(
+        sgp_derivs = TethysBayes_surface_derivatives(
             m_sgp, chn_sgp, query_coords;
             radii=[10.0],
             return_samples=true
@@ -131,14 +131,14 @@ end
         z_true = [120.0 + 10.0 * sin(x / 10.0) + randn() * 0.5 for (x, y) in zip(x_pts, y_pts)]
         df_wgp = DataFrame(s_x = x_pts, s_y = y_pts, depth = z_true)
 
-        m_wgp = @bstm(
+        m_wgp = @tbm(
             likelihood(depth) ~ intercept() + random(s_x, s_y, model=waveletgp, resolution=16, wavelet=:db4),
             df_wgp, verbose=false
         )
         chn_wgp = sample(m_wgp, NUTS(20, 0.65), 40; progress=false)
 
         query_coords = Matrix{Float64}([35.0 35.0; 65.0 65.0])
-        wgp_derivs = bstm_surface_derivatives(
+        wgp_derivs = TethysBayes_surface_derivatives(
             m_wgp, chn_wgp, query_coords;
             radii=[12.0],
             return_samples=true
@@ -175,14 +175,14 @@ end
         z_obs = [100.0 + 0.5 * cx[s] - 0.2 * cy[s] + randn() * 0.5 for s in s_indices]
         df_spde = DataFrame(s_idx = s_indices, depth = z_obs)
 
-        m_spde = @bstm(
+        m_spde = @tbm(
             likelihood(depth) ~ intercept() + random(s_idx, model=spde),
             df_spde, W=W_spde, verbose=false
         )
         chn_spde = sample(m_spde, NUTS(20, 0.65), 40; progress=false)
 
         unit_coords = [cx cy]
-        spde_derivs = bstm_surface_derivatives(
+        spde_derivs = TethysBayes_surface_derivatives(
             m_spde, chn_spde, unit_coords;
             radii=[20.0],
             return_samples=true
@@ -211,12 +211,12 @@ end
         query_coords = DataFrame(s_x = [30.0, 60.0], s_y = [30.0, 60.0])
 
         # 1. Nystrom Low-Rank Sparse GP
-        m_nystrom = @bstm(
+        m_nystrom = @tbm(
             likelihood(depth) ~ intercept() + random(s_x, s_y, model=nystrom, n_inducing=8),
             df_test, verbose=false
         )
         chn_nystrom = sample(m_nystrom, Prior(), 20; progress=false)
-        res_nystrom = bstm_surface_derivatives(
+        res_nystrom = TethysBayes_surface_derivatives(
             m_nystrom, chn_nystrom, query_coords;
             radii=[10.0], return_samples=true
         )
@@ -231,12 +231,12 @@ end
         @test size(res_nystrom.samples.elevation) == (2, 20)
 
         # 2. FITC Inducing Point Sparse GP
-        m_fitc = @bstm(
+        m_fitc = @tbm(
             likelihood(depth) ~ intercept() + random(s_x, s_y, model=fitc, n_inducing=8),
             df_test, verbose=false
         )
         chn_fitc = sample(m_fitc, Prior(), 20; progress=false)
-        res_fitc = bstm_surface_derivatives(
+        res_fitc = TethysBayes_surface_derivatives(
             m_fitc, chn_fitc, query_coords;
             radii=[10.0], return_samples=true
         )
@@ -251,12 +251,12 @@ end
         @test size(res_fitc.samples.elevation) == (2, 20)
 
         # 3. Spatially Varying Coefficients (SVC)
-        m_svc = @bstm(
+        m_svc = @tbm(
             likelihood(depth) ~ intercept() + (temp |> random(s_x, s_y, model=rff, n_features=10)),
             df_test, verbose=false
         )
         chn_svc = sample(m_svc, Prior(), 20; progress=false)
-        res_svc = bstm_surface_derivatives(
+        res_svc = TethysBayes_surface_derivatives(
             m_svc, chn_svc, query_coords;
             radii=[10.0], return_samples=true
         )

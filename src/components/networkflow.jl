@@ -35,7 +35,7 @@ degree to which the habitat influences the spatial correlation structure.
 # Inputs
 - **Required**:
   - A spatial index variable (e.g., `region`) passed to `random()`.
-  - An adjacency matrix `W` passed as a keyword argument to `@bstm`.
+  - An adjacency matrix `W` passed as a keyword argument to `@tbm`.
   - `habitat`: A `Symbol` pointing to a column in the data, or a `Vector` of length `s_N`.
 - **Optional (in `random()` call)**:
   - `beta`: `UnivariateDistribution`, prior for the habitat effect parameter. Default:

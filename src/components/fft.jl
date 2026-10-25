@@ -1,4 +1,4 @@
-# File: c:\home\jae\projects\bstm\src\components\fft.jl
+# File: c:\home\jae\projects\TethysBayes\src\components\fft.jl
 """
     FFT <: ComponentModel
 
@@ -161,12 +161,12 @@ function get_priors(
 end
 
 """
-    bstm_fourier_basis(coords, nbins_per_dim, length_scale)
+    TethysBayes_fourier_basis(coords, nbins_per_dim, length_scale)
 
 Helper function to generate a tensor product Fourier basis matrix. This is a CPU-only
 implementation.
 """
-function bstm_fourier_basis(
+function TethysBayes_fourier_basis(
     coords::AbstractMatrix, nbins_per_dim::Vector{Int},
     length_scale::Union{Real, AbstractVector}
 )
@@ -240,7 +240,7 @@ function get_updates(
     n_latent = spec.hyper.n_latent
     
     common_basis_code = """
-        B_fft = bstm_fourier_basis(
+        B_fft = TethysBayes_fourier_basis(
             spec_registry[:$(key)].hyper.coords,
             spec_registry[:$(key)].hyper.nbins_per_dim,
             $(p_names.length_scale)
@@ -393,7 +393,7 @@ function get_effects(
         for i in 1:n_samples
             # 1. Generate basis matrix on CPU
             current_ls_cpu = length_scale_dim > 1 ? ls_samples_cpu[i, :] : ls_samples_cpu[i, 1]
-            B_fft_i_cpu = bstm_fourier_basis(
+            B_fft_i_cpu = TethysBayes_fourier_basis(
                 coords_full_cpu, nbins_per_dim, current_ls_cpu
             )
             

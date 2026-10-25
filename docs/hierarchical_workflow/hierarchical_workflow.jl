@@ -1,5 +1,5 @@
 # ==============================================================================
-# BSTM UNIFIED HIERARCHICAL SPATIOTEMPORAL & TELEMETRY WORKFLOW
+# TethysBayes UNIFIED HIERARCHICAL SPATIOTEMPORAL & TELEMETRY WORKFLOW
 # ==============================================================================
 # Complete Multi-Tier Ecological Pipeline Supporting Standard (Baseline)
 # and Advanced Methodological Innovations (5.1 - 5.4) via Configurable Flags:
@@ -16,7 +16,7 @@
 # Single-Call Segment Execution, Provenance Fingerprinting & Smart Restarts.
 # ==============================================================================
 
-using bstm
+using TethysBayes
 using DataFrames
 using LinearAlgebra
 using SparseArrays
@@ -119,20 +119,20 @@ function run_tier1_depth(
     
     if !force && is_tier_up_to_date(db_path, tier_id, traits, String[])
         @info "  ✓ [CACHE] Tier 1 Bathymetry is up-to-date. Loading persisted model bundle..."
-        bundle = load_bstm_model(bundle_path * ".jld2")
+        bundle = load_TethysBayes_model(bundle_path * ".jld2")
         tier1_tbl = read_tier_table(db_path, "tier1_depth_predictions")
         return (model=bundle.model, chain=bundle.chain, table=tier1_tbl, status=:CACHED)
     end
 
     @info "Step 2: Fitting Tier 1 Bathymetric Surface (Random Fourier Features)..."
-    m_depth = @bstm(
+    m_depth = @tbm(
         likelihood(depth, family=gaussian) ~ intercept() + random(s_x, s_y, model=rff, n_features=32),
         df_bathy, verbose=false
     )
     chn_depth = sample(m_depth, NUTS(40, 0.65), 80; progress=false)
     res_depth = model_results_comprehensive(m_depth, chn_depth)
 
-    pred_depth_master = bstm_surface_derivatives(
+    pred_depth_master = TethysBayes_surface_derivatives(
         m_depth, chn_depth,
         DataFrame(s_x=[c[1] for c in au_master.centroids], s_y=[c[2] for c in au_master.centroids]);
         metrics = [:slope, :curvature, :bpi], radii = [10.0, 25.0]
@@ -148,7 +148,7 @@ function run_tier1_depth(
         bpi_10_mean = pred_depth_master.summary.bpi_r10_0_mean
     )
     write_tier_table!(db_path, tier1_table, "tier1_depth_predictions")
-    save_bstm_bundle(bundle_path, m_depth, chn_depth, res_depth)
+    save_TethysBayes_bundle(bundle_path, m_depth, chn_depth, res_depth)
 
     update_manifest_entry!(
         db_path;
@@ -182,10 +182,10 @@ function run_tier2_substrate(
     
     if !force && is_tier_up_to_date(db_path, tier_id, traits, ["tier1_depth"])
         @info "  ✓ [CACHE] Tier 2 Substrate is up-to-date. Loading persisted model bundle..."
-        bundle = load_bstm_model(bundle_path * ".jld2")
+        bundle = load_TethysBayes_model(bundle_path * ".jld2")
         tier2_tbl = read_tier_table(db_path, "tier2_substrate_predictions")
         
-        pred_sub_u2 = bstm.predict(bundle.model, bundle.chain, DataFrame(
+        pred_sub_u2 = TethysBayes.predict(bundle.model, bundle.chain, DataFrame(
             s_idx = 1:au_sub.n_units,
             depth_mu = zeros(au_sub.n_units), slope_mu = zeros(au_sub.n_units)
         ))
@@ -194,7 +194,7 @@ function run_tier2_substrate(
     end
 
     @info "Step 3: Fitting Tier 2 Substrate on Network G_2 ($(au_sub.n_units) units) (Covariance Mode: $(opts.tier2_cov_mode))..."
-    pred_sub_pts = bstm_surface_derivatives(m_depth, chn_depth, df_sub[:, [:s_x, :s_y]]; metrics=[:slope])
+    pred_sub_pts = TethysBayes_surface_derivatives(m_depth, chn_depth, df_sub[:, [:s_x, :s_y]]; metrics=[:slope])
     df_sub.depth_mu = pred_sub_pts.summary.z_mean
     df_sub.depth_sd = pred_sub_pts.summary.z_sd
     df_sub.slope_mu = pred_sub_pts.summary.slope_mean
@@ -205,7 +205,7 @@ function run_tier2_substrate(
         df_sub.grain_size_phi = [grain_mapping[t] + randn() * 0.1 for t in df_sub.substrate_type]
     end
 
-    m_sub = @bstm(
+    m_sub = @tbm(
         likelihood(grain_size_phi, family=gaussian) ~ 
             intercept() + 
             fixed(depth_mu, error_sd=:depth_sd) + 
@@ -216,12 +216,12 @@ function run_tier2_substrate(
     chn_sub = sample(m_sub, NUTS(40, 0.65), 80; progress=false)
     res_sub = model_results_comprehensive(m_sub, chn_sub; au=au_sub)
 
-    pred_depth_u2 = bstm_surface_derivatives(
+    pred_depth_u2 = TethysBayes_surface_derivatives(
         m_depth, chn_depth,
         DataFrame(s_x=[c[1] for c in au_sub.centroids], s_y=[c[2] for c in au_sub.centroids]);
         metrics = [:slope]
     )
-    pred_sub_u2 = bstm.predict(m_sub, chn_sub, DataFrame(
+    pred_sub_u2 = TethysBayes.predict(m_sub, chn_sub, DataFrame(
         s_idx = 1:au_sub.n_units,
         depth_mu = pred_depth_u2.summary.z_mean,
         slope_mu = pred_depth_u2.summary.slope_mean
@@ -238,7 +238,7 @@ function run_tier2_substrate(
         pred_upper = resharded_sub_master.upper
     )
     write_tier_table!(db_path, tier2_table, "tier2_substrate_predictions")
-    save_bstm_bundle(bundle_path, m_sub, chn_sub, res_sub; au=au_sub)
+    save_TethysBayes_bundle(bundle_path, m_sub, chn_sub, res_sub; au=au_sub)
 
     update_manifest_entry!(
         db_path;
@@ -272,15 +272,15 @@ function run_tier3_temperature(
 
     if !force && is_tier_up_to_date(db_path, tier_id, traits, ["tier1_depth"])
         @info "  ✓ [CACHE] Tier 3 Oceanography is up-to-date. Loading persisted model bundle..."
-        bundle = load_bstm_model(bundle_path * ".jld2")
+        bundle = load_TethysBayes_model(bundle_path * ".jld2")
         tier3_tbl = read_tier_table(db_path, "tier3_temp_predictions")
         
-        pred_depth_u3 = bstm_surface_derivatives(
+        pred_depth_u3 = TethysBayes_surface_derivatives(
             m_depth, chn_depth,
             DataFrame(s_x=[c[1] for c in au_temp.centroids], s_y=[c[2] for c in au_temp.centroids]);
             metrics = Symbol[]
         )
-        pred_temp_u3 = bstm.predict(bundle.model, bundle.chain, DataFrame(
+        pred_temp_u3 = TethysBayes.predict(bundle.model, bundle.chain, DataFrame(
             s_idx = 1:au_temp.n_units,
             depth_mu = pred_depth_u3.summary.z_mean,
             month = fill(7, au_temp.n_units),
@@ -292,11 +292,11 @@ function run_tier3_temperature(
 
     @info "Step 4: Fitting Tier 3 Oceanography on Network G_3 ($(au_temp.n_units) units) (Tempered Feedback λ=$(opts.tier3_feedback_lambda))..."
     df_temp.year_idx = df_temp.year .- (minimum(df_temp.year) - 1)
-    pred_temp_pts = bstm_surface_derivatives(m_depth, chn_depth, df_temp[:, [:s_x, :s_y]])
+    pred_temp_pts = TethysBayes_surface_derivatives(m_depth, chn_depth, df_temp[:, [:s_x, :s_y]])
     df_temp.depth_mu = pred_temp_pts.summary.z_mean
     df_temp.depth_sd = pred_temp_pts.summary.z_sd
 
-    m_temp = @bstm(
+    m_temp = @tbm(
         likelihood(bottom_temperature, family=gaussian) ~ 
             intercept() + 
             fixed(depth_mu, error_sd=:depth_sd) + 
@@ -307,12 +307,12 @@ function run_tier3_temperature(
     chn_temp = sample(m_temp, NUTS(40, 0.65), 80; progress=false)
     res_temp = model_results_comprehensive(m_temp, chn_temp; au=au_temp)
 
-    pred_depth_u3 = bstm_surface_derivatives(
+    pred_depth_u3 = TethysBayes_surface_derivatives(
         m_depth, chn_depth,
         DataFrame(s_x=[c[1] for c in au_temp.centroids], s_y=[c[2] for c in au_temp.centroids]);
         metrics = Symbol[]
     )
-    pred_temp_u3 = bstm.predict(m_temp, chn_temp, DataFrame(
+    pred_temp_u3 = TethysBayes.predict(m_temp, chn_temp, DataFrame(
         s_idx = 1:au_temp.n_units,
         depth_mu = pred_depth_u3.summary.z_mean,
         month = fill(7, au_temp.n_units),
@@ -331,7 +331,7 @@ function run_tier3_temperature(
         pred_upper = resharded_temp_master.upper
     )
     write_tier_table!(db_path, tier3_table, "tier3_temp_predictions")
-    save_bstm_bundle(bundle_path, m_temp, chn_temp, res_temp; au=au_temp)
+    save_TethysBayes_bundle(bundle_path, m_temp, chn_temp, res_temp; au=au_temp)
 
     update_manifest_entry!(
         db_path;
@@ -411,7 +411,7 @@ function run_tier4_community(
     haul_meta.PC2 = (H_centered * evecs[:, 1:2])[:, 2]
     haul_meta.year_idx = haul_meta.year .- (minimum(haul_meta.year) - 1)
 
-    pred_haul_depth = bstm_surface_derivatives(m_depth, chn_depth, haul_meta[:, [:s_x, :s_y]])
+    pred_haul_depth = TethysBayes_surface_derivatives(m_depth, chn_depth, haul_meta[:, [:s_x, :s_y]])
     haul_meta.depth_mu = pred_haul_depth.summary.z_mean
     haul_meta.depth_sd = pred_haul_depth.summary.z_sd
     haul_meta.grain_mu = [sub_means_comm[i] for i in haul_meta.s_idx]
@@ -425,7 +425,7 @@ function run_tier4_community(
         iqr_val = max(1.0, quantile(haul_meta.total_density, 0.75) - quantile(haul_meta.total_density, 0.25))
         haul_meta.HSI_target = 1.0 ./ (1.0 .+ exp.(-opts.tier4_hsi_kappa .* (haul_meta.total_density .- q05) ./ iqr_val))
         
-        m_hsi = @bstm(
+        m_hsi = @tbm(
             likelihood(HSI_target, family=beta) ~ 
                 intercept() + 
                 fixed(depth_mu, error_sd=:depth_sd) + 
@@ -438,7 +438,7 @@ function run_tier4_community(
         q_thresh_comm = quantile(haul_meta.total_density, 0.05)
         haul_meta.habitat_suitable = Int.(haul_meta.total_density .>= q_thresh_comm)
 
-        m_hsi = @bstm(
+        m_hsi = @tbm(
             likelihood(habitat_suitable, family=bernoulli) ~ 
                 intercept() + 
                 fixed(depth_mu, error_sd=:depth_sd) + 
@@ -451,7 +451,7 @@ function run_tier4_community(
     chn_hsi = sample(m_hsi, NUTS(40, 0.65), 80; progress=false)
     res_hsi = model_results_comprehensive(m_hsi, chn_hsi; au=au_comm)
 
-    m_pc1 = @bstm(
+    m_pc1 = @tbm(
         likelihood(PC1, family=gaussian) ~ 
             intercept() + 
             fixed(depth_mu, error_sd=:depth_sd) + 
@@ -462,7 +462,7 @@ function run_tier4_community(
     chn_pc1 = sample(m_pc1, NUTS(40, 0.65), 80; progress=false)
     res_pc1 = model_results_comprehensive(m_pc1, chn_pc1; au=au_comm)
 
-    m_pc2 = @bstm(
+    m_pc2 = @tbm(
         likelihood(PC2, family=gaussian) ~ 
             intercept() + 
             fixed(grain_mu, error_sd=:grain_sd) + 
@@ -472,7 +472,7 @@ function run_tier4_community(
     chn_pc2 = sample(m_pc2, NUTS(40, 0.65), 80; progress=false)
     res_pc2 = model_results_comprehensive(m_pc2, chn_pc2; au=au_comm)
 
-    pred_depth_u4 = bstm_surface_derivatives(
+    pred_depth_u4 = TethysBayes_surface_derivatives(
         m_depth, chn_depth,
         DataFrame(s_x=[c[1] for c in au_comm.centroids], s_y=[c[2] for c in au_comm.centroids]);
         metrics = Symbol[]
@@ -484,9 +484,9 @@ function run_tier4_community(
         grain_mu = sub_means_comm,
         temp_mu  = temp_means_comm
     )
-    pred_hsi_u4 = bstm.predict(m_hsi, chn_hsi, df_comm_u4)
-    pred_pc1_u4 = bstm.predict(m_pc1, chn_pc1, df_comm_u4)
-    pred_pc2_u4 = bstm.predict(m_pc2, chn_pc2, df_comm_u4)
+    pred_hsi_u4 = TethysBayes.predict(m_hsi, chn_hsi, df_comm_u4)
+    pred_pc1_u4 = TethysBayes.predict(m_pc1, chn_pc1, df_comm_u4)
+    pred_pc2_u4 = TethysBayes.predict(m_pc2, chn_pc2, df_comm_u4)
 
     resharded_hsi_master = reshard_spatial_field(pred_hsi_u4.predictions_denoised, au_comm, au_master; mode=:samples)
     hsi_means_master = if opts.tier4_hsi_mode == :soft_sigmoid
@@ -514,9 +514,9 @@ function run_tier4_community(
         pc2_sd   = resharded_pc2_master.std
     )
     write_tier_table!(db_path, community_pred_df, "tier4_community_and_hsi_predictions")
-    save_bstm_bundle(joinpath(db_dir, "tier4_hsi"), m_hsi, chn_hsi, res_hsi; au=au_comm)
-    save_bstm_bundle(joinpath(db_dir, "tier4_community_pc1"), m_pc1, chn_pc1, res_pc1; au=au_comm)
-    save_bstm_bundle(joinpath(db_dir, "tier4_community_pc2"), m_pc2, chn_pc2, res_pc2; au=au_comm)
+    save_TethysBayes_bundle(joinpath(db_dir, "tier4_hsi"), m_hsi, chn_hsi, res_hsi; au=au_comm)
+    save_TethysBayes_bundle(joinpath(db_dir, "tier4_community_pc1"), m_pc1, chn_pc1, res_pc1; au=au_comm)
+    save_TethysBayes_bundle(joinpath(db_dir, "tier4_community_pc2"), m_pc2, chn_pc2, res_pc2; au=au_comm)
 
     update_manifest_entry!(
         db_path;
@@ -551,7 +551,7 @@ function run_tier5_biomass(
 
     if !force && is_tier_up_to_date(db_path, tier_id, traits, ["tier1_depth", "tier2_substrate", "tier3_temp", "tier4_community"])
         @info "  ✓ [CACHE] Tier 5 Snow Crab is up-to-date. Loading persisted model bundle..."
-        bundle = load_bstm_model(bundle_path * ".jld2")
+        bundle = load_TethysBayes_model(bundle_path * ".jld2")
         crab_tbl = read_tier_table(db_path, "tier5_snowcrab_predictions")
         return (model=bundle.model, chain=bundle.chain, table=crab_tbl, status=:CACHED)
     end
@@ -577,7 +577,7 @@ function run_tier5_biomass(
 
     df_crab_pos = filter(row -> row.total_biomass_kg > 0.0, df_crab)
 
-    m_crab = @bstm(
+    m_crab = @tbm(
         likelihood(total_biomass_kg, family=gamma, log_offsets=log_effort) ~ 
             intercept() + 
             fixed(hsi_mu, error_sd=:hsi_sd) + 
@@ -602,7 +602,7 @@ function run_tier5_biomass(
         pc1_mu   = tier4_table.pc1_mean,
         pc2_mu   = tier4_table.pc2_mean
     )
-    pred_crab = bstm.predict(m_crab, chn_crab, df_crab_grid)
+    pred_crab = TethysBayes.predict(m_crab, chn_crab, df_crab_grid)
 
     crab_pred_df = DataFrame(
         unit_id = 1:au_master.n_units,
@@ -610,7 +610,7 @@ function run_tier5_biomass(
         pred_sd   = pred_crab.predictions_denoised.std
     )
     write_tier_table!(db_path, crab_pred_df, "tier5_snowcrab_predictions")
-    save_bstm_bundle(bundle_path, m_crab, chn_crab, res_crab; au=au_master)
+    save_TethysBayes_bundle(bundle_path, m_crab, chn_crab, res_crab; au=au_master)
 
     update_manifest_entry!(
         db_path;
@@ -898,7 +898,7 @@ function run_tier6_composition(
             (tow_meta[!, Symbol("n_bin_", l)] .+ 0.5) ./
             (tow_meta[!, Symbol("n_bin_", L)] .+ 0.5)
         )
-        m_alr = @bstm(
+        m_alr = @tbm(
             likelihood(alr_l, family=gaussian) ~
                 intercept() +
                 fixed(hsi_mu, error_sd=:hsi_sd) +
@@ -912,7 +912,7 @@ function run_tier6_composition(
     end
 
     # ── Sub-model 6b: Sex Ratio ────────────────────────────────────────────────
-    m_sex = @bstm(
+    m_sex = @tbm(
         likelihood(sex, family=bernoulli) ~
             intercept() +
             fixed(hsi_mu, error_sd=:hsi_sd) +
@@ -925,7 +925,7 @@ function run_tier6_composition(
     # ── Sub-model 6c: Maturity Ogive ──────────────────────────────────────────
     # CW and sex as individual-level fixed covariates; BYM2 tow-spatial RE
     df_bio.cw_scaled = (df_bio.carapace_width_mm .- 65.0) ./ 20.0  # centre & scale
-    m_mat = @bstm(
+    m_mat = @tbm(
         likelihood(maturity, family=bernoulli) ~
             intercept() +
             fixed(cw_scaled) +
@@ -948,7 +948,7 @@ function run_tier6_composition(
     )
 
     # Predicted ALR vectors (L-1) → softmax → size proportions π(u,t,l)
-    alr_preds = [bstm.predict(models_alr[l], chains_alr[l], grid_ut)
+    alr_preds = [TethysBayes.predict(models_alr[l], chains_alr[l], grid_ut)
                  for l in 1:(L-1)]
 
     # Size proportions via softmax over ALR predictions
@@ -960,7 +960,7 @@ function run_tier6_composition(
     end
 
     # Predicted sex ratio ρ(u,t) on the grid (logistic-scale to probability)
-    pred_sex  = bstm.predict(m_sex, chn_sex, grid_ut)
+    pred_sex  = TethysBayes.predict(m_sex, chn_sex, grid_ut)
     rho_means = 1.0 ./ (1.0 .+ exp.(.-pred_sex.predictions_denoised.mean))
 
     # Maturity ogive at bin midpoints for male and female
@@ -1090,7 +1090,7 @@ function update_segment!(
     seg_clean = Symbol(lowercase(string(segment)))
     @info "Executing single-segment update for target: :$seg_clean (force=$force, mode=$(opts.mode))..."
     
-    mock_data = bstm_data(type="hierarchical", seed=123)
+    mock_data = TethysBayes_data(type="hierarchical", seed=123)
     df_bathy        = mock_data.bathymetry
     df_sub          = mock_data.substrate
     df_temp         = mock_data.temperature
@@ -1186,7 +1186,7 @@ function run_hierarchical_workflow(;
     # STEP 0: SYNTHETIC MULTI-TIER ECOSYSTEM DATA INGESTION
     # --------------------------------------------------------------------------
     @info "Step 0: Generating/Loading synthetic multi-tier ecosystem datasets..."
-    mock_data = bstm_data(type="hierarchical", seed=123)
+    mock_data = TethysBayes_data(type="hierarchical", seed=123)
 
     df_bathy        = mock_data.bathymetry           # N = 1,000 soundings
     df_sub          = mock_data.substrate            # N = 500 grab stations
@@ -1196,7 +1196,7 @@ function run_hierarchical_workflow(;
     df_bio          = mock_data.individuals          # N ~ 12,000 individuals (30-50 per positive tow)
 
     domain_km = 600.0
-    sim_telem_bundle = bstm_data(
+    sim_telem_bundle = TethysBayes_data(
         type = "telemetry",
         domain_size = domain_km,
         n_units = 36,
@@ -1344,7 +1344,7 @@ function main(args::Vector{String})
     if "--status" in args
         db_dir = joinpath(@__DIR__, "project_db")
         db_path = joinpath(db_dir, "master_hierarchical_project.duckdb")
-        mock_data = bstm_data(type="hierarchical", seed=123)
+        mock_data = TethysBayes_data(type="hierarchical", seed=123)
         check_pipeline_status(db_path, get_pipeline_spec(mock_data; opts=opts); verbose=true)
     else
         force_flag = "--force" in args

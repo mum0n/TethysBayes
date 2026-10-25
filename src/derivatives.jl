@@ -2,7 +2,7 @@
     derivatives.jl
 
 Analytical and automatic surface derivatives, differential geometry, and
-topographic/bathymetric metrics for continuous spatial components in BSTM.
+topographic/bathymetric metrics for continuous spatial components in TethysBayes.
 
 Supported spatial representations:
 - `RFF` (Random Fourier Features): Exact analytical trigonometric differentiation and
@@ -752,7 +752,7 @@ function _generic_ad_surface_derivatives(
     total_chain_samples = size(chain, 1) * (chain isa VNChain ? 1 : size(chain, 3))
     S = isnothing(n_samples) ? min(50, total_chain_samples) : min(n_samples, total_chain_samples)
 
-    pred_res = bstm.predict(model_obj, chain, target_df; n_samples=S)
+    pred_res = TethysBayes.predict(model_obj, chain, target_df; n_samples=S)
     z_mean = pred_res.predictions_denoised.mean
     has_samples = !isnothing(pred_res.predictions_denoised.samples)
 
@@ -771,14 +771,14 @@ function _generic_ad_surface_derivatives(
     df_mp = _build_eval_df(-h, +h)
     df_mm = _build_eval_df(-h, -h)
 
-    res_xp = bstm.predict(model_obj, chain, df_xp; n_samples=S)
-    res_xm = bstm.predict(model_obj, chain, df_xm; n_samples=S)
-    res_yp = bstm.predict(model_obj, chain, df_yp; n_samples=S)
-    res_ym = bstm.predict(model_obj, chain, df_ym; n_samples=S)
-    res_pp = bstm.predict(model_obj, chain, df_pp; n_samples=S)
-    res_pm = bstm.predict(model_obj, chain, df_pm; n_samples=S)
-    res_mp = bstm.predict(model_obj, chain, df_mp; n_samples=S)
-    res_mm = bstm.predict(model_obj, chain, df_mm; n_samples=S)
+    res_xp = TethysBayes.predict(model_obj, chain, df_xp; n_samples=S)
+    res_xm = TethysBayes.predict(model_obj, chain, df_xm; n_samples=S)
+    res_yp = TethysBayes.predict(model_obj, chain, df_yp; n_samples=S)
+    res_ym = TethysBayes.predict(model_obj, chain, df_ym; n_samples=S)
+    res_pp = TethysBayes.predict(model_obj, chain, df_pp; n_samples=S)
+    res_pm = TethysBayes.predict(model_obj, chain, df_pm; n_samples=S)
+    res_mp = TethysBayes.predict(model_obj, chain, df_mp; n_samples=S)
+    res_mm = TethysBayes.predict(model_obj, chain, df_mm; n_samples=S)
 
     p_xp = res_xp.predictions_denoised.mean
     p_xm = res_xm.predictions_denoised.mean
@@ -809,7 +809,7 @@ function _generic_ad_surface_derivatives(
             dx = r * cos(theta)
             dy = r * sin(theta)
             df_ring = _build_eval_df(dx, dy)
-            pred_ring = bstm.predict(model_obj, chain, df_ring; n_samples=S)
+            pred_ring = TethysBayes.predict(model_obj, chain, df_ring; n_samples=S)
             ring_preds .+= pred_ring.predictions_denoised.mean
             if has_samples && !isnothing(pred_ring.predictions_denoised.samples)
                 ring_samples .+= pred_ring.predictions_denoised.samples
@@ -870,11 +870,11 @@ function _generic_ad_surface_derivatives(
 end
 
 # ==============================================================================
-# SECTION 7: PUBLIC USER-FACING API (`bstm_surface_derivatives`)
+# SECTION 7: PUBLIC USER-FACING API (`TethysBayes_surface_derivatives`)
 # ==============================================================================
 
 """
-    bstm_surface_derivatives(model_obj, chain, coords; metrics=[:slope, :curvature, :bpi], radii=[15.0], alpha=0.05, return_samples=false)
+    TethysBayes_surface_derivatives(model_obj, chain, coords; metrics=[:slope, :curvature, :bpi], radii=[15.0], alpha=0.05, return_samples=false)
 
 Computes exact surface derivatives, geomorphometric slopes, multi-scale curvatures,
 and Bathymetric Position Indices (BPI) from continuous spatial models.
@@ -895,7 +895,7 @@ and Bathymetric Position Indices (BPI) from continuous spatial models.
 - `Warp` / `NNGP`: Manifold warped and nearest-neighbor Gaussian processes.
 
 # Arguments
-- `model_obj::DynamicPPL.Model`: The fitted BSTM model object.
+- `model_obj::DynamicPPL.Model`: The fitted TethysBayes model object.
 - `chain`: The MCMC samples chain (e.g. `FlexiChain` or `VNChain`).
 - `coords`: Query coordinates as a `DataFrame` (with `:s_x`, `:s_y` or `:x`, `:y` columns)
   or a 2-column coordinate `Matrix{Float64}`.
@@ -915,7 +915,7 @@ A `NamedTuple` containing:
 - `metrics::NamedTuple`: Detailed summary statistics (`mean`, `std`, `lower`, `upper`) for each metric.
 - `samples::NamedTuple` (optional): Raw posterior realization matrices if `return_samples=true`.
 """
-function bstm_surface_derivatives(
+function TethysBayes_surface_derivatives(
     model_obj::DynamicPPL.Model,
     chain::Any,
     coords::Union{DataFrame, AbstractMatrix};
@@ -987,7 +987,7 @@ function bstm_surface_derivatives(
     end
 
     if size(coords_mat, 2) < 2
-        error("bstm_surface_derivatives requires 2D spatial coordinates (x, y).")
+        error("TethysBayes_surface_derivatives requires 2D spatial coordinates (x, y).")
     end
 
     # 3. Dispatch to specialized analytical or automatic derivative engine

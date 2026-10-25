@@ -1,13 +1,13 @@
 # ==============================================================================
-# BSTM Test Suite: Model Instantiation, Smoke Tests, and Complex Inference
+# TethysBayes Test Suite: Model Instantiation, Smoke Tests, and Complex Inference
 # ==============================================================================
 
-if !@isdefined(bstm_Likelihood)
+if !@isdefined(TethysBayes_Likelihood)
     include(joinpath(@__DIR__, "test_helpers.jl"))
 end
 
 @testset "Formulaic Interface & Model Instantiation" begin
-    p_dummy = bstm.bstm_data("scottish_lip")
+    p_dummy = TethysBayes.TethysBayes_data("scottish_lip")
     dummy_df = p_dummy.data
     W_test = p_dummy.au.W
 
@@ -31,33 +31,33 @@ end
     for (name, f_str, fam, extra_args) in test_cases
         @testset "$name" begin
             println("  Testing Instantiation: $name")
-            model = bstm.bstm_core(f_str, dummy_df; model_family=fam, extra_args...)
+            model = TethysBayes.TethysBayes_core(f_str, dummy_df; model_family=fam, extra_args...)
             @test size(sample(model, Turing.Prior(), 1), 1) >= 1
         end
     end
 end
 
 @testset "Integration Tests: Smoke Tests" begin
-    p_smoke = bstm.bstm_data("scottish_lip")
+    p_smoke = TethysBayes.TethysBayes_data("scottish_lip")
     sim_df = p_smoke.data
     W_smoke = p_smoke.au.W
 
     @testset "IID Model Smoke Test" begin
-        model_iid_sim = @bstm(likelihood(y_gauss) ~ intercept() + random(region,
+        model_iid_sim = @tbm(likelihood(y_gauss) ~ intercept() + random(region,
             model=iid), sim_df)
         chain = sample(model_iid_sim, MH(), 100, progress=false)
         @test mean(chain[:sigma_region]) > 0
     end
 
     @testset "AR1 Model Smoke Test" begin
-        model_ar1_sim = @bstm(likelihood(y_gauss) ~ intercept() + random(year, model=ar1),
+        model_ar1_sim = @tbm(likelihood(y_gauss) ~ intercept() + random(year, model=ar1),
             sim_df)
         chain = sample(model_ar1_sim, NUTS(10, 0.65), 10, progress=false)
         @test mean(chain[:sigma_year]) > 0
     end
 
     @testset "BYM2 ⊗ AR1 Interaction Smoke Test" begin
-        model_int_sim = @bstm(
+        model_int_sim = @tbm(
             likelihood(y_gauss) ~ intercept() + (random(s_idx, model=bym2) ⊗ random(t_idx,
                 model=ar1)),
             sim_df, W=W_smoke
@@ -79,9 +79,9 @@ end
         # gives a sharp, reference-free assertion.
         n, sigma, noise = 12, 1.0, 1e-9
         for rho in (0.0, 0.3, 0.6, 0.9)
-            tmpl = bstm.build_structure_template(:ar1, n)
+            tmpl = TethysBayes.build_structure_template(:ar1, n)
             lambda_vals = (1.0 + rho^2) .+ rho .* tmpl.L
-            scale = bstm.sigma_stable_scale(sigma, rho, Float64)
+            scale = TethysBayes.sigma_stable_scale(sigma, rho, Float64)
             D = scale ./ sqrt.(lambda_vals .+ noise)
             K = tmpl.U * Diagonal(D.^2) * tmpl.U'
             @test isapprox(K[1, 1], sigma^2 / (1 - rho^2); rtol=0.02)
@@ -89,15 +89,15 @@ end
 
         # The factor is sigma / sqrt(1-rho^2), NOT sigma * sqrt(1-rho^2). An earlier fix
         # used the reciprocal and the diagonal assertion above is what caught it.
-        @test isapprox(bstm.sigma_stable_scale(1.0, 0.6, Float64), 1 / sqrt(1 - 0.36);
+        @test isapprox(TethysBayes.sigma_stable_scale(1.0, 0.6, Float64), 1 / sqrt(1 - 0.36);
                        rtol=1e-12)
         # rho can round to +/-1 in floating point; the scale must stay finite and positive.
-        @test isfinite(bstm.sigma_stable_scale(1.0, 1.0, Float64))
-        @test bstm.sigma_stable_scale(1.0, 1.0, Float64) > 0
+        @test isfinite(TethysBayes.sigma_stable_scale(1.0, 1.0, Float64))
+        @test TethysBayes.sigma_stable_scale(1.0, 1.0, Float64) > 0
 
         # get_effects must use the same scale as the model, or reconstruction would
         # disagree with the model it was fitted from.
-        @test hasmethod(bstm.sigma_stable_scale, Tuple{Float64, Float64, Type{Float64}})
+        @test hasmethod(TethysBayes.sigma_stable_scale, Tuple{Float64, Float64, Type{Float64}})
     end
 
     @testset "reshard SD propagates through the aggregation" begin
@@ -108,26 +108,26 @@ end
         for c in 1:n_coarse
             P[c, (c-1)*k+1 : c*k] .= 1/k
         end
-        got = bstm.reshard_spatial_field(P, (mean=ones(n_coarse * k), std=ones(n_coarse * k)))
+        got = TethysBayes.reshard_spatial_field(P, (mean=ones(n_coarse * k), std=ones(n_coarse * k)))
         @test all(isapprox.(got.std, 1/sqrt(k); rtol=1e-12))
         @test all(got.std .< 1.0)          # strictly shrunk, as an average must be
         # The mean path is unchanged by the SD fix.
         @test all(isapprox.(got.mean, 1.0; rtol=1e-12))
         # Unequal SDs must be handled elementwise through P and P'.
         sd_fine = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0]
-        got2 = bstm.reshard_spatial_field(P, (mean=zeros(12), std=copy(sd_fine)))
+        got2 = TethysBayes.reshard_spatial_field(P, (mean=zeros(12), std=copy(sd_fine)))
         want = sqrt.([sum(sd_fine[(c-1)*k+1 : c*k] .^ 2) / k^2 for c in 1:n_coarse])
         @test all(isapprox.(got2.std, want; rtol=1e-12))
     end
 end
 
 @testset "Complex Integration Tests" begin
-    p_cplx = bstm.bstm_data("scottish_lip")
+    p_cplx = TethysBayes.TethysBayes_data("scottish_lip")
     data = p_cplx.data
     W = p_cplx.au.W
 
     @testset "Hurdle Model" begin
-        model = @bstm(likelihood(y_pois, family=poisson, hurdle=5) ~ 1 + random(s_idx,
+        model = @tbm(likelihood(y_pois, family=poisson, hurdle=5) ~ 1 + random(s_idx,
             model=bym2), data, W=W)
         chain = sample(model, MH(), 100, progress=false)
         @test any(k -> occursin("hurdle", string(k)), keys(chain))
@@ -138,7 +138,7 @@ end
         data_eigen[!, :species_1] = randn(nrow(data_eigen))
         data_eigen[!, :species_2] = randn(nrow(data_eigen))
         data_eigen[!, :species_3] = randn(nrow(data_eigen))
-        model = @bstm(likelihood(y_gauss) ~ 1 + eigen(species_1, species_2, species_3,
+        model = @tbm(likelihood(y_gauss) ~ 1 + eigen(species_1, species_2, species_3,
             n_factors=2), data_eigen)
         chain = sample(model, MH(), 10, progress=false)
         @test any(k -> occursin("pca_sd", string(k)) || occursin("species", string(k)),
@@ -153,7 +153,7 @@ end
         W_mf = W
         df_lo = select(df_hi, :proxy_val => :y_low, :s_idx, :t_idx)
 
-        model_mf = @bstm(
+        model_mf = @tbm(
             likelihood(y_gauss) ~ 1 + random(s_idx, model=bym2) + random(t_idx,
                 model=ar1) + nested(low_fi,
                 formula="likelihood(y_low) ~ 1 + random(s_idx) + random(t_idx)",
@@ -183,11 +183,11 @@ end
                             s_idx=repeat(1:n_s_test, inner=t_N_train),
                             t_idx=repeat(1:t_N_train, outer=n_s_test))
 
-        model_obj = bstm.bstm_core("likelihood(y_gauss) ~ 1 + random(s_idx, model=bym2) + random(t_idx, model=ar1)", 
+        model_obj = TethysBayes.TethysBayes_core("likelihood(y_gauss) ~ 1 + random(s_idx, model=bym2) + random(t_idx, model=ar1)", 
                          train_df; s_N=s_N_train, t_N=t_N_train, W=W_train)
         
         chain_train = sample(model_obj, MH(), 500, progress=false)
-        res_pred = bstm.predict(model_obj, chain_train, test_df; n_samples=100)
+        res_pred = TethysBayes.predict(model_obj, chain_train, test_df; n_samples=100)
         
         @test res_pred.predictions_denoised isa NamedTuple
         @test length(res_pred.predictions_denoised.mean) == nrow(test_df)
@@ -199,14 +199,14 @@ end
         cv_formula = "likelihood(y_gauss) ~ 1 + random(year, model=ar1)"
 
         @testset "k-fold CV" begin
-            cv_results_kfold = bstm.bstm_cv_orchestrator(cv_formula, cv_df; method=:kfold,
+            cv_results_kfold = TethysBayes.TethysBayes_cv_orchestrator(cv_formula, cv_df; method=:kfold,
                 n_folds=3, n_samples=50, W=cv_W)
             @test length(cv_results_kfold.folds) == 3
             @test cv_results_kfold.mean_rmse isa Real
         end
 
         @testset "Temporal Forward-Chaining CV" begin
-            cv_results_fchain = bstm.bstm_cv_orchestrator(cv_formula, cv_df;
+            cv_results_fchain = TethysBayes.TethysBayes_cv_orchestrator(cv_formula, cv_df;
                 method=:temporal_forward_chain, cv_var=:year, n_folds=2, n_samples=50,
                 W=cv_W)
             @test length(cv_results_fchain.folds) == 2
@@ -224,7 +224,7 @@ end
         log_offsets = [0.0, 0.1, 0.0, 0.1, 0.0, 0.1, 0.0, 0.1],
         y = [2, 3, 1, 4, 3, 5, 2, 6]
     )
-    m_gibbs = @bstm(
+    m_gibbs = @tbm(
         likelihood(y, family=poisson, log_offsets=log_offsets) ~
             intercept() +
             fixed(cov1) +
@@ -265,26 +265,26 @@ end
     chn_custom = sample(m_gibbs, os_custom, 5; progress=false)
     @test size(chn_custom, 1) == 5
 
-    # Test bstm_sample with MCMCThreads backend and deepcopy validation
-    chn_bstm = bstm_sample(m_gibbs, os_custom, 5; progress=false)
-    @test size(chn_bstm, 1) == 5
+    # Test TethysBayes_sample with MCMCThreads backend and deepcopy validation
+    chn_TethysBayes = TethysBayes_sample(m_gibbs, os_custom, 5; progress=false)
+    @test size(chn_TethysBayes, 1) == 5
 
     # Test model_results_comprehensive on multi-chain / VNChain sample object
-    res_gibbs = model_results_comprehensive(m_gibbs, chn_bstm)
+    res_gibbs = model_results_comprehensive(m_gibbs, chn_TethysBayes)
     @test haskey(res_gibbs.metrics, :rmse)
     @test haskey(res_gibbs, :parameters)
 
     # Test parameter name resolution with Parameter(...) and parameters. wrappers
     raw_wrapped_names = ["Parameter(sigma_s_idx)", "Parameter(innovations_s_idx[1])", "parameters.beta", "intercept"]
-    @test bstm._find_parameter(raw_wrapped_names, "sigma_s_idx") == "sigma_s_idx"
-    @test bstm._find_parameter(raw_wrapped_names, "innovations_s_idx") == "innovations_s_idx"
-    @test bstm._find_parameter(raw_wrapped_names, "beta") == "beta"
-    @test bstm._find_parameter(raw_wrapped_names, "intercept") == "intercept"
+    @test TethysBayes._find_parameter(raw_wrapped_names, "sigma_s_idx") == "sigma_s_idx"
+    @test TethysBayes._find_parameter(raw_wrapped_names, "innovations_s_idx") == "innovations_s_idx"
+    @test TethysBayes._find_parameter(raw_wrapped_names, "beta") == "beta"
+    @test TethysBayes._find_parameter(raw_wrapped_names, "intercept") == "intercept"
 
-    # Test bstm_Likelihood random generation
-    lik_poisson = bstm_Likelihood("poisson", 1.5)
+    # Test TethysBayes_Likelihood random generation
+    lik_poisson = TethysBayes_Likelihood("poisson", 1.5)
     @test rand(lik_poisson) >= 0.0
-    lik_gauss = bstm_Likelihood("gaussian", 0.0; sigma_y=1.0)
+    lik_gauss = TethysBayes_Likelihood("gaussian", 0.0; sigma_y=1.0)
     @test isfinite(rand(lik_gauss))
     lik_vec = [lik_poisson for _ in 1:10]
     sampled_vec = rand.(lik_vec)
@@ -293,9 +293,9 @@ end
     # Test extract_param_matrix and extract_param_vector
     mock_chain_dict = Dict(:sigma_s_idx => [0.5, 0.6, 0.7], :innovations_s_idx => [[0.1, 0.2], [0.3,
         0.4], [0.5, 0.6]])
-    @test size(bstm.extract_param_matrix(mock_chain_dict, :sigma_s_idx), 1) == 3
-    @test size(bstm.extract_param_matrix(mock_chain_dict, :innovations_s_idx), 2) == 2
-    @test length(bstm.extract_param_vector(mock_chain_dict, :sigma_s_idx)) == 3
+    @test size(TethysBayes.extract_param_matrix(mock_chain_dict, :sigma_s_idx), 1) == 3
+    @test size(TethysBayes.extract_param_matrix(mock_chain_dict, :innovations_s_idx), 2) == 2
+    @test length(TethysBayes.extract_param_vector(mock_chain_dict, :sigma_s_idx)) == 3
 
     # Test multi-chain scalar parameter collapsing
     mock_multichain = (
@@ -303,31 +303,31 @@ end
         intercept = randn(10, 3),
         beta = randn(10, 3)
     )
-    mat_mc = bstm.extract_param_matrix(mock_multichain, :intercept)
+    mat_mc = TethysBayes.extract_param_matrix(mock_multichain, :intercept)
     @test size(mat_mc) == (30, 1)
 
     # Test direct parameter summary statistics
-    df_direct_summary = bstm._compute_direct_parameter_summary(mock_chain_dict)
+    df_direct_summary = TethysBayes._compute_direct_parameter_summary(mock_chain_dict)
     @test df_direct_summary isa DataFrame
     @test "parameters" in names(df_direct_summary)
     @test "mean" in names(df_direct_summary)
     @test size(df_direct_summary, 1) >= 2
 
     # Test _generate_conditional_predictions type safety with integer columns
-    cond_res = bstm._generate_conditional_predictions(m_gibbs, chn_bstm, m_gibbs.args.M, :cov1)
+    cond_res = TethysBayes._generate_conditional_predictions(m_gibbs, chn_TethysBayes, m_gibbs.args.M, :cov1)
     @test !isnothing(cond_res)
 
     # Test temporal component get_effects with PS DataFrame
     ps_test = (data = DataFrame(s_idx = [1, 2], year = [1, 2], cov1 = [0.1, 0.2]), y_N = 2,
         y_obs = [0.0, 0.0])
     ar1_spec = filter(s -> s.structure == :temporal, m_gibbs.args.M.components)[1]
-    ar1_effects = bstm.get_effects(ar1_spec.component_obj, chn_bstm, ar1_spec,
+    ar1_effects = TethysBayes.get_effects(ar1_spec.component_obj, chn_TethysBayes, ar1_spec,
         m_gibbs.args.M, ps_test)
     @test haskey(ar1_effects, :structured)
 
     # Test predict with out-of-sample DataFrame
     df_new = DataFrame(s_idx = [1, 2, 3], year = [1, 2, 3], cov1 = [0.1, 0.2, 0.3])
-    pred_out = bstm.predict(m_gibbs, chn_bstm, df_new)
+    pred_out = TethysBayes.predict(m_gibbs, chn_TethysBayes, df_new)
     @test haskey(pred_out, :predictions_denoised)
     @test length(pred_out.predictions_denoised.mean) == 3
 
@@ -340,7 +340,7 @@ end
         log_e = [0.0, 0.1, 0.0, 0.1]
     )
     W_small = [0.0 1.0; 1.0 0.0]
-    m_offset = bstm.bstm_core(
+    m_offset = TethysBayes.TethysBayes_core(
         :(likelihood(y, family=poisson,
             log_offsets=log_e) ~ intercept() + fixed(cov1) + random(s_idx,
             model=bym2) + random(year, model=ar1)),
@@ -348,10 +348,10 @@ end
         W = W_small,
         verbose = false
     )
-    chn_offset = bstm.bstm_sample(m_offset, 5; progress=false)
+    chn_offset = TethysBayes.TethysBayes_sample(m_offset, 5; progress=false)
     au_test = (polygons = [[[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 0.0]], [[1.0, 0.0],
         [2.0, 0.0], [2.0, 1.0], [1.0, 0.0]]], centroids = [(0.5, 0.5), (1.5, 0.5)])
-    res_offset = bstm.model_results_comprehensive(m_offset, chn_offset)
+    res_offset = TethysBayes.model_results_comprehensive(m_offset, chn_offset)
     @test haskey(res_offset.metrics, :rmse)
     @test haskey(res_offset.metrics, :waic)
     @test haskey(res_offset, :parameters)
@@ -362,12 +362,12 @@ end
     @test haskey(res_offset, :model)
     @test haskey(res_offset, :chain)
 
-    # Test separate bstm_plots statement with data and spatial areal units (au).
-    # `bstm_plots` lives in the `BSTMPlotsExt` package extension and only exists once the
+    # Test separate TethysBayes_plots statement with data and spatial areal units (au).
+    # `TethysBayes_plots` lives in the `TethysBayesPlotsExt` package extension and only exists once the
     # optional plotting stack (Plots/StatsPlots/ColorSchemes) is installed.
     if HAS_PLOTTING
         plot_dir = scratch_dir()
-        plots_res = bstm.bstm_plots(res_offset; data=df_offset, au=au_test, save_dir=plot_dir)
+        plots_res = TethysBayes.TethysBayes_plots(res_offset; data=df_offset, au=au_test, save_dir=plot_dir)
         @test haskey(plots_res.plots, :posterior_predictive_check)
         @test haskey(plots_res.plots, :fixed_effects)
         @test haskey(plots_res.plots, :spatial)
@@ -381,11 +381,11 @@ end
         @test isfile(joinpath(plot_dir, "spacetime_predictions.png"))
 
         # Test positional data argument
-        plots_res_pos = bstm.bstm_plots(res_offset, df_offset; au=au_test)
+        plots_res_pos = TethysBayes.TethysBayes_plots(res_offset, df_offset; au=au_test)
         @test haskey(plots_res_pos.plots, :posterior_predictive_check)
     else
         @test_skip false
-        @info "Skipping bstm_plots checks: optional plotting stack not installed."
+        @info "Skipping TethysBayes_plots checks: optional plotting stack not installed."
     end
 
     @testset "GMRF: every null direction is zeroed, not just the first" begin
@@ -407,38 +407,38 @@ end
         @testset "_zero_null_modes!" begin
             L = [0.0, 0.4, 2.0]
             d = [9.0, 9.0, 9.0]
-            z = bstm._zero_null_modes!(d, L)
+            z = TethysBayes._zero_null_modes!(d, L)
             @test z == [1]
             @test d[1] == 0.0
             @test d[2] == 9.0 && d[3] == 9.0     # non-null untouched
 
             # Two null directions -> both zeroed.
             d2 = [9.0, 9.0, 9.0]
-            @test bstm._zero_null_modes!(d2, [0.0, 1e-16, 3.0]) == [1, 2]
+            @test TethysBayes._zero_null_modes!(d2, [0.0, 1e-16, 3.0]) == [1, 2]
             @test d2[1] == 0.0 && d2[2] == 0.0 && d2[3] == 9.0
 
             # Relative tolerance: scaling the whole precision must not change the verdict.
             d3 = [9.0, 9.0, 9.0]
-            bstm._zero_null_modes!(d3, [0.0, 1.0e-15, 3.0e6])
+            TethysBayes._zero_null_modes!(d3, [0.0, 1.0e-15, 3.0e6])
             @test d3[1] == 0.0 && d3[2] == 0.0 && d3[3] == 9.0
 
             # Degenerate template with no positive eigenvalue: everything is null.
             d4 = fill(9.0, 3)
-            @test bstm._zero_null_modes!(d4, [0.0, 0.0, 0.0]) == [1, 2, 3]
+            @test TethysBayes._zero_null_modes!(d4, [0.0, 0.0, 0.0]) == [1, 2, 3]
             @test all(iszero, d4)
 
-            @test bstm._zero_null_modes!(Float64[], Float64[]) == Int[]
+            @test TethysBayes._zero_null_modes!(Float64[], Float64[]) == Int[]
         end
 
         # --- the connected-graph behaviour is unchanged (a no-op) ---
         @testset "connected graph is unaffected" begin
             W = chain_graph(5, [(1,2),(2,3),(3,4),(4,5)])
-            t = bstm.build_structure_template(:icar, 5; W=W)
+            t = TethysBayes.build_structure_template(:icar, 5; W=W)
             L = t.L
             new = 1.0 ./ sqrt.(L .+ 1e-9)
             old = copy(new)
             old[1] = 0.0                            # the previous behaviour
-            bstm._zero_null_modes!(new, L)
+            TethysBayes._zero_null_modes!(new, L)
             @test isapprox(new, old; atol=1e-15)
             @test count(iszero, new) == 1            # exactly one null direction
         end
@@ -446,13 +446,13 @@ end
         # --- the disconnected graph now satisfies sum-to-zero ---
         @testset "disconnected graph has no null-space leak" begin
             W = chain_graph(5, [(1,2),(3,4),(4,5)])   # two components
-            t = bstm.build_structure_template(:icar, 5; W=W)
+            t = TethysBayes.build_structure_template(:icar, 5; W=W)
             L = t.L
             tol = 1e-10 * maximum(L)
             @test count(<=(tol), L) >= 2             # more than one null direction
 
             d = 1.0 ./ sqrt.(L .+ 1e-9)
-            bstm._zero_null_modes!(d, L)
+            TethysBayes._zero_null_modes!(d, L)
             @test all(d[i] == 0.0 for i in findall(<=(tol), L))   # ALL of them
 
             C = t.U * Diagonal(d .^ 2) * t.U'
@@ -473,11 +473,11 @@ end
             W = chain_graph(n, [(1,2),(3,4)])
             idx = repeat(collect(1:n), 2)
             dfe = DataFrame(y = float.(1 .+ idx), s_idx = idx, x = float.(idx))
-            m = bstm.bstm_core("likelihood(y, family=poisson) ~ intercept() + " *
+            m = TethysBayes.TethysBayes_core("likelihood(y, family=poisson) ~ intercept() + " *
                                "random(s_idx, model=icar)", dfe; W=W, s_N=n, verbose=false)
             code = m.args.M.generated_model_code
-            # Must be self-contained: `_GeneratedModelRuntime` has no bstm names in scope,
-            # so a bare or `$(bstm).`-qualified helper call raises UndefVarError there.
+            # Must be self-contained: `_GeneratedModelRuntime` has no TethysBayes names in scope,
+            # so a bare or `$(TethysBayes).`-qualified helper call raises UndefVarError there.
             @test occursin("zero EVERY null direction", code)
             @test !occursin("_zero_null_modes!", code)
         end
@@ -513,8 +513,8 @@ end
             B = Matrix{Float64}(I, M, M) + (A' * A) ./ s2
             ref_fitc = max.(s2 .- diag(A * inv(B) * A'), 0.0)
 
-            got_dtc = bstm._dtc_lambda_diag(L, K_XU, sigma)
-            got_fitc = bstm._fitc_lambda_diag(L, K_XU, sigma)
+            got_dtc = TethysBayes._dtc_lambda_diag(L, K_XU, sigma)
+            got_fitc = TethysBayes._fitc_lambda_diag(L, K_XU, sigma)
 
             @test isapprox(got_dtc, ref_dtc; atol=1e-10)
             @test isapprox(got_fitc, ref_fitc; atol=1e-10)
@@ -533,7 +533,7 @@ end
             K_UU = rq_kernel(Z, Z, sigma, ls) + 1e-2 * I
             K_XU = rq_kernel(X, Z, sigma, ls)
             L = Matrix(cholesky(Symmetric(K_UU)).L)
-            good = bstm._dtc_lambda_diag(L, K_XU, sigma)
+            good = TethysBayes._dtc_lambda_diag(L, K_XU, sigma)
             wrong = max.(s2 .- vec(sum(((L' \ Matrix(K_XU')) .^ 2), dims=1)), 0.0)
             truth = max.(s2 .- diag(K_XU * (K_UU \ Matrix(K_XU'))), 0.0)
             @test isapprox(good, truth; atol=1e-10)
@@ -547,7 +547,7 @@ end
                 K_UU = rq_kernel(Z, Z, sigma, 1.5) + 1e-2 * I
                 K_XU = rq_kernel(X[1:20, :], Z, sigma, 1.5)
                 L = cholesky(Symmetric(K_UU)).L
-                d = mean(bstm._dtc_lambda_diag(L, K_XU, sigma))
+                d = mean(TethysBayes._dtc_lambda_diag(L, K_XU, sigma))
                 @test isapprox(d, s2; atol=1e-3)
                 isnothing(prev) || @test d >= prev - 1e-9   # monotonically toward sigma^2
                 prev = d
@@ -555,20 +555,20 @@ end
         end
 
         @testset "the dispatcher is the only path either side uses" begin
-            @test bstm._sparse_gp_lambda_diag(:dtc, Matrix(I, 2, 2), zeros(3, 2), 1.0) isa Vector
-            @test_throws ErrorException bstm._sparse_gp_lambda_diag(
+            @test TethysBayes._sparse_gp_lambda_diag(:dtc, Matrix(I, 2, 2), zeros(3, 2), 1.0) isa Vector
+            @test_throws ErrorException TethysBayes._sparse_gp_lambda_diag(
                 :vfe, Matrix(I, 2, 2), zeros(3, 2), 1.0)
-            @test_throws ErrorException bstm._sparse_gp_lambda_diag(
+            @test_throws ErrorException TethysBayes._sparse_gp_lambda_diag(
                 :nonsense, Matrix(I, 2, 2), zeros(3, 2), 1.0)
-            # Registered for the generated-code module, where bare bstm names do not resolve.
-            @test isdefined(bstm, :_sparse_gp_lambda_diag)
+            # Registered for the generated-code module, where bare TethysBayes names do not resolve.
+            @test isdefined(TethysBayes, :_sparse_gp_lambda_diag)
         end
     end
 
     @testset "Sparse GP end-to-end: every method fits and reconstructs" begin
         # The expression-level tests cannot see any of this. They check
         # `_sparse_gp_lambda_diag` in isolation; they do not check that the generated model
-        # body can call it (it runs in `_GeneratedModelRuntime`, which has no bstm names in
+        # body can call it (it runs in `_GeneratedModelRuntime`, which has no TethysBayes names in
         # scope), that `:dtc` -- a NEW method name -- is accepted by the constructor and the
         # formula parser, or that `get_effects` uses the same variance the model did.
         #
@@ -587,34 +587,34 @@ end
 
         # Analytic variance for one method, computed independently of the component.
         function expected_field_variance(meth, M, hyper, noise)
-            K_UU = bstm.evaluate_kernel_matrix(hyper.Z_inducing, sigma0, ls0, :se, noise)
-            K_XU = bstm.evaluate_cross_kernel_matrix(hyper.coords, hyper.Z_inducing,
+            K_UU = TethysBayes.evaluate_kernel_matrix(hyper.Z_inducing, sigma0, ls0, :se, noise)
+            K_XU = TethysBayes.evaluate_cross_kernel_matrix(hyper.coords, hyper.Z_inducing,
                                                      sigma0, ls0, :se)
             L = cholesky(Symmetric(K_UU)).L
             Q = diag(K_XU * (K_UU \ Matrix(K_XU')))
-            lam = meth === :vfe ? zeros(npts) : bstm._sparse_gp_lambda_diag(meth, L, K_XU, sigma0)
+            lam = meth === :vfe ? zeros(npts) : TethysBayes._sparse_gp_lambda_diag(meth, L, K_XU, sigma0)
             return Q .+ lam
         end
 
         fieldvars = Dict{Symbol, Vector{Float64}}()
         for meth in (:dtc, :fitc, :vfe)
-            # Built as a STRING: `sigma=$sigma0` inside `@bstm(...)` makes the formula parser
+            # Built as a STRING: `sigma=$sigma0` inside `@tbm(...)` makes the formula parser
             # emit the literal text `$sigma0`, which then fails `Core.eval`.
             formula = "likelihood(depth) ~ intercept() + " *
                       "random(x, y, model=fitc, n_inducing=$nind, method=$meth, " *
                       "sigma=$sigma0, length_scale=$ls0)"
             @testset "method = :$meth" begin
-                m = bstm.bstm_core(formula, dfg; verbose=false)
+                m = TethysBayes.TethysBayes_core(formula, dfg; verbose=false)
                 @test m isa DynamicPPL.Model
 
                 ch = sample(MersenneTwister(5), m, Prior(), ndraws; progress=false)
                 @test size(ch, 1) == ndraws
 
                 comp = m.args.M.components[1]
-                @test comp.component_obj isa bstm.FITC
+                @test comp.component_obj isa TethysBayes.FITC
                 @test comp.component_obj.method === meth   # the label survived construction
 
-                eff = bstm.get_effects(comp.component_obj, ch, comp, m.args.M, nothing)
+                eff = TethysBayes.get_effects(comp.component_obj, ch, comp, m.args.M, nothing)
                 field = eff.structured[1]
                 @test size(field) == (npts, ndraws)
                 @test all(isfinite, field)
@@ -648,13 +648,13 @@ end
             formula = "likelihood(depth) ~ intercept() + " *
                       "random(x, y, model=fitc, n_inducing=$nind, method=:dtc, " *
                       "sigma=$sigma0, length_scale=$ls0)"
-            m = bstm.bstm_core(formula, dfg; verbose=false)
+            m = TethysBayes.TethysBayes_core(formula, dfg; verbose=false)
             ch = sample(MersenneTwister(5), m, Prior(), 400; progress=false)
             comp = m.args.M.components[1]
-            @test bstm.get_effects(comp.component_obj, ch, comp, m.args.M,
+            @test TethysBayes.get_effects(comp.component_obj, ch, comp, m.args.M,
                                     nothing).structured[1] |> x -> all(isfinite, x)
             # With sigma pinned the whole field must be O(sigma), not O(0).
-            f = bstm.get_effects(comp.component_obj, ch, comp, m.args.M, nothing).structured[1]
+            f = TethysBayes.get_effects(comp.component_obj, ch, comp, m.args.M, nothing).structured[1]
             @test maximum(abs, f) > 1e-6
         end
     end
@@ -695,10 +695,10 @@ end
             @testset "model=$model" begin
                 formula = "likelihood(depth, family=gaussian) ~ intercept() + " *
                           "random(idx, model=$model, sigma=1.0)"
-                m = bstm.bstm_core(formula, dsp; W=Wsp, verbose=false)
+                m = TethysBayes.TethysBayes_core(formula, dsp; W=Wsp, verbose=false)
                 ch = sample(MersenneTwister(3), m, MH(), 120; progress=false)
                 comp = m.args.M.components[1]
-                field = bstm.get_effects(comp.component_obj, ch, comp, m.args.M,
+                field = TethysBayes.get_effects(comp.component_obj, ch, comp, m.args.M,
                                          nothing).structured[1]
                 @test all(isfinite, field)
                 @test maximum(abs, field) > 1e-8
@@ -708,17 +708,17 @@ end
         # `_resolve_hyper_samples` itself, which is the shared fix.
         @testset "_resolve_hyper_samples" begin
             fake = Dict(:sigma_idx => [2.0, 4.0])
-            @test bstm._resolve_hyper_samples(fake, ["sigma_idx"], :sigma_idx, 1.0, 1, false, 2) == [2.0, 4.0]
+            @test TethysBayes._resolve_hyper_samples(fake, ["sigma_idx"], :sigma_idx, 1.0, 1, false, 2) == [2.0, 4.0]
             # Absent from the chain but pinned: the constant, replicated.
-            @test bstm._resolve_hyper_samples(fake, [], :sigma_idx, 1.5, 1, false, 3) == fill(1.5, 3)
+            @test TethysBayes._resolve_hyper_samples(fake, [], :sigma_idx, 1.5, 1, false, 3) == fill(1.5, 3)
             # Absent and not pinned: genuinely unresolvable, so `nothing`.
-            @test isnothing(bstm._resolve_hyper_samples(fake, [], :sigma_idx, Normal(0, 1), 1, false, 3))
+            @test isnothing(TethysBayes._resolve_hyper_samples(fake, [], :sigma_idx, Normal(0, 1), 1, false, 3))
             # `as_matrix` gives the (n_samples, 1) shape some sites index as `[i, 1]`. It has
             # to be expressed here rather than as a trailing `reshape`, because
             # `reshape(nothing, ...)` would throw and break the genuinely-absent path.
-            @test size(bstm._resolve_hyper_samples(fake, ["sigma_idx"], :sigma_idx, 1.0,
+            @test size(TethysBayes._resolve_hyper_samples(fake, ["sigma_idx"], :sigma_idx, 1.0,
                                                    1, false, 2; as_matrix = true)) == (2, 1)
-            @test isnothing(bstm._resolve_hyper_samples(fake, [], :sigma_idx, Normal(0, 1),
+            @test isnothing(TethysBayes._resolve_hyper_samples(fake, [], :sigma_idx, Normal(0, 1),
                                                        1, false, 3; as_matrix = true))
         end
     end
@@ -757,8 +757,8 @@ end
 
         # The template must report one null direction per component.
         @testset "template null count" begin
-            td = bstm.build_structure_template(:icar, ndisc; W = Wdisc)
-            tc = bstm.build_structure_template(:icar, ndisc; W = Wconn)
+            td = TethysBayes.build_structure_template(:icar, ndisc; W = Wdisc)
+            tc = TethysBayes.build_structure_template(:icar, ndisc; W = Wconn)
             @test count(<=(1e-10 * maximum(td.L)), td.L) == 2
             @test count(<=(1e-10 * maximum(tc.L)), tc.L) == 1
             @test td.n_components == 2
@@ -772,10 +772,10 @@ end
             for model in (:icar, :besag, :bym2, :leroux, :cyclic, :rw1, :rw2)
                 formula = "likelihood(depth, family=gaussian) ~ intercept() + " *
                           "random(idx, model=$model, sigma=1.0)"
-                mv = bstm.bstm_core(formula, ddf; W = Wdisc, noise = noise_v, verbose = false)
+                mv = TethysBayes.TethysBayes_core(formula, ddf; W = Wdisc, noise = noise_v, verbose = false)
                 chv = sample(MersenneTwister(4), mv, Prior(), 400; progress = false)
                 compv = mv.args.M.components[1]
-                field = bstm.get_effects(compv.component_obj, chv, compv, mv.args.M,
+                field = TethysBayes.get_effects(compv.component_obj, chv, compv, mv.args.M,
                                          nothing).structured[1]
                 @test all(isfinite, field)
                 # Sum-to-zero within each connected component. An undeflated null mode
@@ -790,17 +790,17 @@ end
         # And the helper itself, including the over-deflation direction.
         @testset "_zero_null_modes! derives the count from the spectrum" begin
             d1 = ones(4)
-            @test bstm._zero_null_modes!(d1, [0.0, 1.0, 2.0, 3.0]) == [1]
+            @test TethysBayes._zero_null_modes!(d1, [0.0, 1.0, 2.0, 3.0]) == [1]
             @test d1 == [0.0, 1.0, 1.0, 1.0]
             d2 = ones(4)
-            @test bstm._zero_null_modes!(d2, [0.0, 0.0, 2.0, 3.0]) == [1, 2]
+            @test TethysBayes._zero_null_modes!(d2, [0.0, 0.0, 2.0, 3.0]) == [1, 2]
             @test d2 == [0.0, 0.0, 1.0, 1.0]
             # A 1-D path penalty has ONE null direction, and the helper must not touch
             # the rest -- the failure mode of the old `[1]`-and-`[2]` form.
             d3 = ones(3)
-            @test bstm._zero_null_modes!(d3, [0.0, 1.0, 2.0]) == [1]
+            @test TethysBayes._zero_null_modes!(d3, [0.0, 1.0, 2.0]) == [1]
             @test d3[2] == 1.0
-            @test bstm._zero_null_modes!(ones(0), Float64[]) == Int[]
+            @test TethysBayes._zero_null_modes!(ones(0), Float64[]) == Int[]
         end
     end
 
@@ -826,17 +826,17 @@ end
             hf.depth = 9.0 .+ 2.0 .* cos.(range(0, 2pi; length = nfix + 1)[1:nfix])
             f = "likelihood(depth, family=gaussian) ~ intercept() + " *
                 "random(x, y, model=hyperbolic, sigma=1.0, curvature=1.0)"
-            m = bstm.bstm_core(f, hf; verbose = false)
+            m = TethysBayes.TethysBayes_core(f, hf; verbose = false)
             @test m isa DynamicPPL.Model
             ch = sample(MersenneTwister(3), m, MH(), 120; progress = false)
             comp = m.args.M.components[1]
-            field = bstm.get_effects(comp.component_obj, ch, comp, m.args.M, nothing).structured[1]
+            field = TethysBayes.get_effects(comp.component_obj, ch, comp, m.args.M, nothing).structured[1]
             @test all(isfinite, field)
             @test maximum(abs, field) > 1e-8
             # The kernel itself must be positive definite on a valid configuration.
             ang = range(0, 2pi; length = nfix + 1)[1:nfix]
             C = hcat([0.7 * cos(a) for a in ang], [0.7 * sin(a) for a in ang])
-            K = bstm._evaluate_hyperbolic_kernel_matrix(C, 1.0, 1.0, 0.0)
+            K = TethysBayes._evaluate_hyperbolic_kernel_matrix(C, 1.0, 1.0, 0.0)
             @test minimum(eigvals(Symmetric(Matrix(K)))) > 0
         end
 
@@ -850,10 +850,10 @@ end
             ef.depth = 9.0 .+ 0.5 .* ef.a .+ 0.3 .* ef.b
             f = "likelihood(depth, family=gaussian) ~ intercept() + " *
                 "random(a, b, model=eigen, sigma=1.0, n_factors=1)"
-            m = bstm.bstm_core(f, ef; verbose = false)
+            m = TethysBayes.TethysBayes_core(f, ef; verbose = false)
             ch = sample(MersenneTwister(3), m, MH(), 120; progress = false)
             comp = m.args.M.components[1]
-            field = bstm.get_effects(comp.component_obj, ch, comp, m.args.M, nothing).structured[1]
+            field = TethysBayes.get_effects(comp.component_obj, ch, comp, m.args.M, nothing).structured[1]
             @test all(isfinite, field)
             @test maximum(abs, field) > 1e-8
         end
@@ -876,19 +876,19 @@ end
             # `beta=` omitted on purpose: it is the documented default path.
             f = "likelihood(depth, family=gaussian) ~ intercept() + " *
                 "random(idx, model=networkflow, sigma=1.0, habitat=habitat)"
-            m = bstm.bstm_core(f, nf; W = Wn, verbose = false)
+            m = TethysBayes.TethysBayes_core(f, nf; W = Wn, verbose = false)
             ch = sample(MersenneTwister(3), m, MH(), 120; progress = false)
             comp = m.args.M.components[1]
-            field = bstm.get_effects(comp.component_obj, ch, comp, m.args.M, nothing).structured[1]
+            field = TethysBayes.get_effects(comp.component_obj, ch, comp, m.args.M, nothing).structured[1]
             @test all(isfinite, field)
             @test maximum(abs, field) > 1e-8
             # And the pinned-beta path, which also required the struct field to accept Real.
             f2 = "likelihood(depth, family=gaussian) ~ intercept() + " *
                  "random(idx, model=networkflow, sigma=1.0, habitat=habitat, beta=0.5)"
-            m2 = bstm.bstm_core(f2, nf; W = Wn, verbose = false)
+            m2 = TethysBayes.TethysBayes_core(f2, nf; W = Wn, verbose = false)
             ch2 = sample(MersenneTwister(3), m2, MH(), 120; progress = false)
             c2 = m2.args.M.components[1]
-            @test maximum(abs, bstm.get_effects(c2.component_obj, ch2, c2, m2.args.M,
+            @test maximum(abs, TethysBayes.get_effects(c2.component_obj, ch2, c2, m2.args.M,
                                                 nothing).structured[1]) > 1e-8
         end
 
@@ -902,10 +902,10 @@ end
             for model in (:fitc, :sparsegp, :nystrom)
                 f = "likelihood(depth, family=gaussian) ~ intercept() + " *
                     "random(x, y, model=$model, n_inducing=8, sigma=1.0)"
-                m = bstm.bstm_core(f, sg; verbose = false)
+                m = TethysBayes.TethysBayes_core(f, sg; verbose = false)
                 ch = sample(MersenneTwister(3), m, MH(), 80; progress = false)
                 comp = m.args.M.components[1]
-                field = bstm.get_effects(comp.component_obj, ch, comp, m.args.M,
+                field = TethysBayes.get_effects(comp.component_obj, ch, comp, m.args.M,
                                          nothing).structured[1]
                 @test all(isfinite, field)
                 @test maximum(abs, field) > 1e-8
@@ -926,7 +926,7 @@ end
             tt = collect(1:length(yy))
             lls = Float64[]
             for rho in (0.0, 0.5, 0.9, 0.99, 0.999, 0.9999)
-                v = bstm._ar1_log_marginal_likelihood(yy, tt, length(yy), 0.5, rho, 0.2)
+                v = TethysBayes._ar1_log_marginal_likelihood(yy, tt, length(yy), 0.5, rho, 0.2)
                 @test isfinite(v)
                 push!(lls, v)
             end
@@ -940,7 +940,7 @@ end
             # acceptable; a NaN masquerading as a likelihood is not.
             for rho in (1.0, 1.0000001)
                 v = try
-                    bstm._ar1_log_marginal_likelihood(yy, tt, length(yy), 0.5, rho, 0.2)
+                    TethysBayes._ar1_log_marginal_likelihood(yy, tt, length(yy), 0.5, rho, 0.2)
                 catch
                     NaN
                 end
@@ -960,11 +960,11 @@ end
         # `:spacetime` SURVIVES as a structure kind (not a component name): `svar`,
         # `tensorproductsmooth` and `dynamics` all map to it, and the assembly, reconstruction
         # and plotting code branches on `structure == :spacetime`. Only the alias is gone.
-        @test !haskey(bstm.COMPONENT_TYPE_REGISTRY, :spacetime)
-        @test haskey(bstm.COMPONENT_TYPE_REGISTRY, :svar)
+        @test !haskey(TethysBayes.COMPONENT_TYPE_REGISTRY, :spacetime)
+        @test haskey(TethysBayes.COMPONENT_TYPE_REGISTRY, :svar)
         # A constructor is retained so the failure carries guidance rather than being a bare
         # "unknown model" -- the most common way a removed API name hurts someone.
-        @test haskey(bstm.COMPONENT_CONSTRUCTORS, :spacetime)
+        @test haskey(TethysBayes.COMPONENT_CONSTRUCTORS, :spacetime)
 
         ns, nt = 4, 3
         nst = ns * nt
@@ -984,7 +984,7 @@ end
             f = "likelihood(depth, family=gaussian) ~ intercept() + " *
                 "random(s_idx, model=spacetime, sigma=1.0)"
             err = try
-                bstm.bstm_core(f, dst; W = Wst, verbose = false)
+                TethysBayes.TethysBayes_core(f, dst; W = Wst, verbose = false)
                 nothing
             catch e
                 e
@@ -999,7 +999,7 @@ end
         @testset "the supported forms still work" begin
             f = "likelihood(depth, family=gaussian) ~ intercept() + " *
                 "random(s_idx, model=svar, sigma=1.0)"
-            m = bstm.bstm_core(f, dst; W = Wst, verbose = false)
+            m = TethysBayes.TethysBayes_core(f, dst; W = Wst, verbose = false)
             @test m isa DynamicPPL.Model
             @test sample(MersenneTwister(3), m, Prior(), 10; progress=false) isa Any
 
@@ -1008,7 +1008,7 @@ end
             f2 = "likelihood(depth, family=gaussian) ~ intercept() + " *
                  "random(s_idx, model=icar, sigma=1.0) " * "\u2297" * " " *
                  "random(t_idx, model=ar1, sigma=1.0)"
-            m2 = bstm.bstm_core(f2, dst; W = Wst, verbose = false)
+            m2 = TethysBayes.TethysBayes_core(f2, dst; W = Wst, verbose = false)
             @test m2 isa DynamicPPL.Model
             kinds = Set(nameof(typeof(c.component_obj)) for c in m2.args.M.components)
             @test :ICAR in kinds
@@ -1017,9 +1017,9 @@ end
         end
 
         @testset "the structure kind survives" begin
-            @test bstm.MODEL_TO_STRUCTURE_MAP[:svar] == :spacetime
-            @test bstm.MODEL_TO_STRUCTURE_MAP[:tensorproductsmooth] == :spacetime
-            @test bstm.MODEL_TO_STRUCTURE_MAP[:dynamics] == :spacetime
+            @test TethysBayes.MODEL_TO_STRUCTURE_MAP[:svar] == :spacetime
+            @test TethysBayes.MODEL_TO_STRUCTURE_MAP[:tensorproductsmooth] == :spacetime
+            @test TethysBayes.MODEL_TO_STRUCTURE_MAP[:dynamics] == :spacetime
         end
     end
 end

@@ -40,7 +40,7 @@ is transformed using the `tanh` function: \$\\rho_i = \\tanh(\\rho_{field, i})\$
 - **Required**:
   - A spatial index variable (e.g., `region`) passed to `random()`.
   - A temporal index variable (e.g., `year`) passed to `random()`.
-  - An adjacency matrix `W` passed as a keyword argument to `@bstm`.
+  - An adjacency matrix `W` passed as a keyword argument to `@tbm`.
 - **Optional (in `random()` call)**:
   - `model`: `Symbol`, the GMRF model for the `rho` field (e.g., `:icar`, `:leroux`).
     Default: `:icar`.

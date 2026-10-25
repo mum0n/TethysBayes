@@ -1,7 +1,7 @@
 """
     Dynamics <: ComponentModel
 
-A component for embedding mechanistic, process-based models within the `bstm`
+A component for embedding mechanistic, process-based models within the `TethysBayes`
 framework. It simulates the evolution of a latent field over space and time
 according to a user-specified differential or difference equation.
 
@@ -68,7 +68,7 @@ estimation of physical or biological parameters within a Bayesian framework.
 - **Required**:
   - A spatial index variable (e.g., `s_idx`).
   - A temporal index variable (e.g., `year`).
-  - Either an adjacency matrix `W` passed as a keyword argument to `@bstm`, or
+  - Either an adjacency matrix `W` passed as a keyword argument to `@tbm`, or
     spatial coordinate variables (e.g., `x_coord`, `y_coord`) for continuous mode.
 - **Optional (in `random()` call)**:
   - `model`: `String`, the specific dynamics model (`"logistic"`, `"advection_diffusion"`,
@@ -144,7 +144,7 @@ CPU-only.
 
 This function handles two main modes for spatial setup:
 1.  **Graph Mode (Default)**: If an adjacency matrix `W` is provided in the main
-    `@bstm` call, it uses the provided graph structure.
+    `@tbm` call, it uses the provided graph structure.
 2.  **Continuous Mode**: If `W` is not provided, it discretizes the domain into a
     regular grid based on coordinate variables and the `resolution` parameter.
 

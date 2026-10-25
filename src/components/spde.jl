@@ -38,7 +38,7 @@ The model then samples the latent field from \$\\boldsymbol{\\phi} \\sim \\mathc
 # Inputs
 - **Required**:
   - A spatial index variable (e.g., `region`) passed to `random()`.
-  - An adjacency matrix `W` passed as a keyword argument to `@bstm`.
+  - An adjacency matrix `W` passed as a keyword argument to `@tbm`.
 - **Optional (in `random()` call)**:
   - `sigma`: `UnivariateDistribution`, prior for the marginal standard deviation. Default:
     `Exponential(1.0)`.

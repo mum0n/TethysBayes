@@ -1,13 +1,13 @@
 ---
-title: "BSTM Command-Line Interface Runner (`bstmr.jl`): Operating Guide & Technical Manual"
+title: "TethysBayes Command-Line Interface Runner (`TethysBayesr.jl`): Operating Guide & Technical Manual"
 format: html
 ---
 
-# BSTM Command-Line Interface Runner (`bstmr.jl`)
+# TethysBayes Command-Line Interface Runner (`TethysBayesr.jl`)
 
 ## 1. Overview
 
-The `bstmr.jl` command-line utility provides a declarative, reproducible, and scriptable interface to the `@bstm` Bayesian Spatio-Temporal Modeling framework. It reads a structured text configuration file (formatted in TOML), resolves environment dependencies, executes user-specified data preprocessing, compiles dynamic Turing probabilistic models, performs MCMC sampling, and persists analytical outputs to high-performance formats: **JLD2** (binary model snapshots for warm-restarts) and **DuckDB** (compressed relational analytical tables).
+The `TethysBayesr.jl` command-line utility provides a declarative, reproducible, and scriptable interface to the `@tbm` Bayesian Spatio-Temporal Modeling framework. It reads a structured text configuration file (formatted in TOML), resolves environment dependencies, executes user-specified data preprocessing, compiles dynamic Turing probabilistic models, performs MCMC sampling, and persists analytical outputs to high-performance formats: **JLD2** (binary model snapshots for warm-restarts) and **DuckDB** (compressed relational analytical tables).
 
 ```
                       ┌─────────────────────────────────┐
@@ -19,7 +19,7 @@ The `bstmr.jl` command-line utility provides a declarative, reproducible, and sc
                                        │
                                        ▼
                       ┌─────────────────────────────────┐
-                      │        scripts/bstmr.jl         │
+                      │        scripts/TethysBayesr.jl         │
                       │   - Dynamic package loading     │
                       │   - User data preprocessing     │
                       │   - Model compilation & MCMC    │
@@ -41,13 +41,13 @@ The `bstmr.jl` command-line utility provides a declarative, reproducible, and sc
 ### 2.1 General Syntax
 
 ```bash
-julia --project=. scripts/bstmr.jl <config.toml> [options]
+julia --project=. scripts/TethysBayesr.jl <config.toml> [options]
 ```
 
 or using the explicit `--config` option:
 
 ```bash
-julia --project=. scripts/bstmr.jl --config=<path_to_config.toml> [options]
+julia --project=. scripts/TethysBayesr.jl --config=<path_to_config.toml> [options]
 ```
 
 ### 2.2 CLI Flags & Options
@@ -71,7 +71,7 @@ Command-line options override settings declared in the TOML configuration file:
 
 ## 3. TOML Configuration Specification
 
-A `bstmr` configuration file is organized into six declarative tables:
+A `TethysBayesr` configuration file is organized into six declarative tables:
 
 ### 3.1 `[metadata]`
 Provides human-readable provenance and documentation stored directly in output files:
@@ -142,7 +142,7 @@ Defines the symbolic model formula and compilation options:
 
 ```toml
 [model]
-# Model formula using @bstm syntax:
+# Model formula using @tbm syntax:
 formula = "likelihood(z, family = gaussian) ~ intercept() + random(plat, plon, model = rff, n_features = 30)"
 
 # Computational flags
@@ -237,7 +237,7 @@ table_prefix = "rff_"
 
 **Execution**:
 ```bash
-julia --project=. scripts/bstmr.jl scripts/config_bathymetry_rff_duckdb.toml
+julia --project=. scripts/TethysBayesr.jl scripts/config_bathymetry_rff_duckdb.toml
 ```
 
 **Output Inspection**:
@@ -253,10 +253,10 @@ To verify configuration syntax, data accessibility, and model compilation withou
 
 ```bash
 # Validates configuration, loads data, and instantiates model without MCMC
-julia --project=. scripts/bstmr.jl scripts/config_bathymetry_rff.toml --no-sample
+julia --project=. scripts/TethysBayesr.jl scripts/config_bathymetry_rff.toml --no-sample
 
 # Quick dry-run check
-julia --project=. scripts/bstmr.jl scripts/config_bathymetry_rff.toml --dry-run
+julia --project=. scripts/TethysBayesr.jl scripts/config_bathymetry_rff.toml --dry-run
 ```
 
 ### 4.3 Example 3: Overriding Sampling Dimensions via CLI
@@ -264,7 +264,7 @@ julia --project=. scripts/bstmr.jl scripts/config_bathymetry_rff.toml --dry-run
 Run production sampling with 1,000 iterations and 500 warmup steps, overriding the TOML defaults:
 
 ```bash
-julia --project=. scripts/bstmr.jl scripts/config_bathymetry_rff.toml -s=1000 -w=500 --sampler=nuts
+julia --project=. scripts/TethysBayesr.jl scripts/config_bathymetry_rff.toml -s=1000 -w=500 --sampler=nuts
 ```
 
 ### 4.4 Example 4: Exporting Both JLD2 and DuckDB Simultaneously
@@ -272,7 +272,7 @@ julia --project=. scripts/bstmr.jl scripts/config_bathymetry_rff.toml -s=1000 -w
 Save both the complete model state snapshot for warm-restarts and the relational DuckDB database:
 
 ```bash
-julia --project=. scripts/bstmr.jl scripts/config_bathymetry_rff.toml --format=both -o=output/scotian_shelf_bundle
+julia --project=. scripts/TethysBayesr.jl scripts/config_bathymetry_rff.toml --format=both -o=output/scotian_shelf_bundle
 ```
 
 This creates:
@@ -284,10 +284,10 @@ This creates:
 ## 5. Troubleshooting & Best Practices
 
 1. **Missing User Packages**:
-   If an environment or preprocessing package is not installed, `bstmr.jl` raises an informative error directing the user to run `Pkg.add("<PackageName>")`.
+   If an environment or preprocessing package is not installed, `TethysBayesr.jl` raises an informative error directing the user to run `Pkg.add("<PackageName>")`.
 
 2. **World-Age Issues in Dynamic Scripts**:
-   The `bstmr.jl` runner utilizes `Base.invokelatest` on model instantiation and sampling boundaries to guarantee seamless execution when dynamic models and user functions are compiled on the fly.
+   The `TethysBayesr.jl` runner utilizes `Base.invokelatest` on model instantiation and sampling boundaries to guarantee seamless execution when dynamic models and user functions are compiled on the fly.
 
 3. **Memory Management on Large Datasets**:
    For large datasets (e.g. $>100{,}000$ points), consider using continuous spatial approximations like Random Fourier Features (`model = rff`) or NNGP (`model = nngp`) rather than full covariance Gaussian Processes.

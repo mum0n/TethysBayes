@@ -11,7 +11,7 @@
 
 Core formula compilation, AST decomposition, technical primitive resolution,
 dynamic Turing code generator, and sampling execution engine for Bayesian Spatio-Temporal
-  Models (BSTM).
+  Models (TethysBayes).
 Version: v1.0.0
 
 """
@@ -1133,13 +1133,13 @@ end
 """
     _categorize_rhs_nodes!(nodes, modules, fixed_effects; data=nothing, calling_mod::Module=Main)
 Recursively traverses the Abstract Syntax Tree (AST) of the right-hand side (RHS)
-of a formula, categorizing its nodes into `bstm` modules (components) or bare
+of a formula, categorizing its nodes into `TethysBayes` modules (components) or bare
 fixed effects.
 # Version
 v1.0.0
 # Arguments
 - `nodes`: A vector of AST nodes representing the RHS of the formula.
-- `modules`: A dictionary to store categorized `bstm` modules.
+- `modules`: A dictionary to store categorized `TethysBayes` modules.
 - `fixed_effects`: A list to store bare fixed effect terms.
 # Returns
 - `nothing`. The `modules` and `fixed_effects` collections are mutated.
@@ -1202,7 +1202,7 @@ function _categorize_rhs_nodes!(nodes, modules, fixed_effects; data=nothing, cal
             modules[module_key] = (module_type = :interact, args = interact_args)
         elseif hasproperty(node, :module_type)
             m_type = node.module_type
-            if m_type in BSTM_MODULE_KEYWORDS || haskey(COMPONENT_TYPE_REGISTRY, m_type)
+            if m_type in TethysBayes_MODULE_KEYWORDS || haskey(COMPONENT_TYPE_REGISTRY, m_type)
                 local raw_key
                 pos_args = get(node.args, :positional_args, [])
                 if m_type == :mixed
@@ -1400,10 +1400,10 @@ function _normalize_rhs_subtraction(rhs_str::AbstractString)::String
 end
 
 """
-    decompose_bstm_formula(formula_str::String, data::DataFrame;
+    decompose_TethysBayes_formula(formula_str::String, data::DataFrame;
                            calling_mod::Module = Main, copy_data::Bool = true)
 
-Decomposes a `bstm` formula string into its constituent parts, including outcomes,
+Decomposes a `TethysBayes` formula string into its constituent parts, including outcomes,
 likelihood specifications, model components, and fixed effects. Applies transformations
 safely without mutating caller input data when `copy_data = true`.
 
@@ -1423,7 +1423,7 @@ v1.1.0
   with any generated transformation columns).
 """
 
-function decompose_bstm_formula(
+function decompose_TethysBayes_formula(
     formula_str::String,
     data::DataFrame;
     calling_mod::Module = Main,
@@ -1581,13 +1581,13 @@ end
 
 """
 
-    bstm_config(formula::String, data::DataFrame; calling_module::Module=Main, kwargs...)
+    TethysBayes_config(formula::String, data::DataFrame; calling_module::Module=Main, kwargs...)
 
 
 Constructs the complete model configuration from a formula and data. 
 """
-bstm_config(formula::Union{Expr, Symbol}, data::DataFrame; calling_module::Module=Main,
-    kwargs...) = bstm_config(string(formula), data; calling_module=calling_module, kwargs...)
+TethysBayes_config(formula::Union{Expr, Symbol}, data::DataFrame; calling_module::Module=Main,
+    kwargs...) = TethysBayes_config(string(formula), data; calling_module=calling_module, kwargs...)
 
 
 """
@@ -1842,7 +1842,7 @@ end
 
 """
 
-    bstm_config(pairs::Pair{Symbol, <:Union{NamedTuple, AbstractDict}}...; kwargs...)
+    TethysBayes_config(pairs::Pair{Symbol, <:Union{NamedTuple, AbstractDict}}...; kwargs...)
 
 Constructs a multi-fidelity model configuration from a system of paired equations.
 # Mathematical Formulation
@@ -1859,13 +1859,13 @@ where ``\\rho_k \\sim \\text{coupling\\_prior}`` (or ``\\rho_k \\equiv 1.0`` whe
 # Returns
 - A comprehensive `NamedTuple` model configuration.
 """
-function bstm_config(
+function TethysBayes_config(
     equation_pairs::Pair{Symbol, <:Union{NamedTuple, AbstractDict}}...;
     calling_module::Module = Main,
     kwargs...
 )
     if isempty(equation_pairs)
-        throw(ArgumentError("bstm_config requires at least one model specification pair."))
+        throw(ArgumentError("TethysBayes_config requires at least one model specification pair."))
     end
 
 
@@ -1947,7 +1947,7 @@ function bstm_config(
                 sub_kwargs[:nested_components] = nested_for_sk
             end
         end
-        sub_cfg = bstm_config(s_formula_str, s_data; sub_kwargs...)
+        sub_cfg = TethysBayes_config(s_formula_str, s_data; sub_kwargs...)
         configured_models[sk] = sub_cfg
     end
     # Attach direct children of primary_key to primary_kwargs
@@ -1978,18 +1978,18 @@ function bstm_config(
     end
     primary_kwargs[:calling_module] = calling_module
     primary_kwargs[:nested_components] = primary_nested
-    return bstm_config(primary_formula_str, primary_data; primary_kwargs...)
+    return TethysBayes_config(primary_formula_str, primary_data; primary_kwargs...)
 end
 
 
 
-function bstm_config(
+function TethysBayes_config(
 
     formula::String, data::DataFrame; calling_module::Module=Main, kwargs...
 
 )
 
-    decomposed_formula = decompose_bstm_formula(
+    decomposed_formula = decompose_TethysBayes_formula(
 
         formula, data; calling_mod = calling_module, copy_data = true
 
@@ -2044,7 +2044,7 @@ function bstm_config(
                     if haskey(s_spec, :submodels)
                         s_kwargs[:submodels] = s_spec.submodels
                     end
-                    s_cfg = bstm_config(string(s_formula_raw), s_data; s_kwargs...)
+                    s_cfg = TethysBayes_config(string(s_formula_raw), s_data; s_kwargs...)
                     s_cfg = _process_nested_link(
                         s_spec, s_cfg, data, :main, s_sym, calling_module
                     )
@@ -2990,7 +2990,7 @@ Creates the initial model configuration dictionary (`M`)
 v1.0.0
 # Arguments
 - `data::DataFrame`: The input data for the model.
-- `kwargs`: A dictionary of keyword arguments passed from the main `@bstm` call.
+- `kwargs`: A dictionary of keyword arguments passed from the main `@tbm` call.
 # Returns
 - `Dict{Symbol, Any}`: The initial model configuration dictionary `M`.
 """ 
@@ -3572,8 +3572,8 @@ function _finalize_config!(M::Dict)
     end
 end
 """
-    _replace_bstm_modules_in_expr(ex)
-Recursively traverses a Julia expression and replaces `bstm`-specific modules
+    _replace_TethysBayes_modules_in_expr(ex)
+Recursively traverses a Julia expression and replaces `TethysBayes`-specific modules
 with their `StatsModels.jl` equivalents for parsing within other modules like `mixed()`.
 # Version
 v1.0.0
@@ -3582,7 +3582,7 @@ v1.0.0
 # Returns
 - The modified expression, ready for parsing by `StatsModels.jl`.
 """
-function _replace_bstm_modules_in_expr(ex)
+function _replace_TethysBayes_modules_in_expr(ex)
     if ex isa Expr && ex.head == :call
         if ex.args[1] == :intercept
             return 1
@@ -3591,17 +3591,17 @@ function _replace_bstm_modules_in_expr(ex)
             return ex.args[2]
         end
         # Recursively process the arguments of any other function call.
-        return Expr(ex.head, _replace_bstm_modules_in_expr.(ex.args)...)
+        return Expr(ex.head, _replace_TethysBayes_modules_in_expr.(ex.args)...)
     elseif ex isa Expr
         # Recursively process the arguments of any other expression type.
-        return Expr(ex.head, _replace_bstm_modules_in_expr.(ex.args)...)
+        return Expr(ex.head, _replace_TethysBayes_modules_in_expr.(ex.args)...)
     else
         # Base case: return non-expression atoms (symbols, literals) as is.
         return ex
     end
 end
 """
-    _bstm_error_handler(e, model)
+    _TethysBayes_error_handler(e, model)
 Provides detailed, user-friendly diagnostics when the initial prior predictive check
 (`rand(model)`) fails.
 # Version
@@ -3612,10 +3612,10 @@ v1.0.0
 # Returns
 - `nothing`. The function prints a diagnostic report to the console.
 """
-function _bstm_error_handler(e, model)
+function _TethysBayes_error_handler(e, model)
     println("\nERROR during prior predictive check (rand(m)):")
     showerror(stdout, e, stacktrace(catch_backtrace()))
-    println("\n\n--- bstm Diagnosis ---")
+    println("\n\n--- TethysBayes Diagnosis ---")
     if e isa DimensionMismatch
         println("A `DimensionMismatch` error occurred. This often points to an issue in the model's structure.")
         println("Potential Causes:")
@@ -3671,7 +3671,7 @@ function _bstm_error_handler(e, model)
         println("1. Start with the simplest possible model to isolate the issue.")
         println("   This helps determine if the error is in your `likelihood()` definition or in the model components.")
         println("\n   Suggested base model:")
-        println("   @bstm(\n       $lhs ~ $base_rhs,\n       data, ...\n   )")
+        println("   @tbm(\n       $lhs ~ $base_rhs,\n       data, ...\n   )")
         structural_terms = filter(t -> !in(Base.strip(t), ["1", "0", "-1"])&&
             !startswith(Base.strip(t), "intercept("), all_terms)
         if !isempty(structural_terms)
@@ -3681,7 +3681,7 @@ function _bstm_error_handler(e, model)
             for (i, term) in enumerate(structural_terms)
                 current_formula_rhs *= " + " * term
                 println("\n   Step $i: Add '$term'")
-                println("   @bstm(\n       $lhs ~ $current_formula_rhs,\n       data, ...\n   )")
+                println("   @tbm(\n       $lhs ~ $current_formula_rhs,\n       data, ...\n   )")
             end
         end
     catch e_sugg
@@ -3723,8 +3723,8 @@ function _transform_pair_macro_expr(pair_ex)
         return Expr(:call, :(=>), key_part, esc(spec_part))
     end
 end
-macro bstm(exprs...)
-    # --- detect assignment form: @bstm name = rest... ---
+macro tbm(exprs...)
+    # --- detect assignment form: @tbm name = rest... ---
     local var_name = nothing
     local expressions_to_parse = exprs
     if !isempty(exprs) && exprs[1] isa Expr && exprs[1].head == :(=)
@@ -3747,7 +3747,7 @@ macro bstm(exprs...)
             push!(positional, ex)
         end
     end
-    # --- check if positional arguments are pairs: @bstm :primary => (...), :proxy => (...) ---
+    # --- check if positional arguments are pairs: @tbm :primary => (...), :proxy => (...) ---
     _is_pair_expr(ex) = (ex isa Expr && ex.head == :call && length(ex.args) == 3 &&
                          ex.args[1] == :(=>))
     if !isempty(positional) && all(_is_pair_expr, positional)
@@ -3762,7 +3762,7 @@ macro bstm(exprs...)
             end
         end
         kwargs_esc = [esc(kw) for kw in final_kwargs]
-        core_logic = :(bstm_core($(transformed_pairs...); calling_module = $(__module__), $(kwargs_esc...)))
+        core_logic = :(TethysBayes_core($(transformed_pairs...); calling_module = $(__module__), $(kwargs_esc...)))
         if !isnothing(var_name)
             return :($(esc(var_name)) = $core_logic)
         else
@@ -3787,7 +3787,7 @@ macro bstm(exprs...)
         formula_expr = positional[1]
         formula_pos_idx = 1
     else
-        error("The @bstm macro requires a formula; supply it positionally or with `formula=`.")
+        error("The @tbm macro requires a formula; supply it positionally or with `formula=`.")
     end
     data_pos_idx = 0
     if haskey(kwdict, :data)
@@ -3797,7 +3797,7 @@ macro bstm(exprs...)
         data_pos_idx = formula_pos_idx + 1
         data_expr = positional[data_pos_idx]
     else
-        error("The @bstm macro requires a data frame; supply it positionally or with `data=`.")
+        error("The @tbm macro requires a data frame; supply it positionally or with `data=`.")
     end
     # Warn if there are unexpected extra positional arguments
     consumed_pos = max(formula_pos_idx, data_pos_idx)
@@ -3840,24 +3840,11 @@ macro bstm(exprs...)
     end
     # --- prepare for insertion into generated call ---
     #
-    # `formula_expr` can be three different things, and conflating them is what made
-    # `@bstm(f, df)` unusable (L9):
+    # `formula_expr` can be three different things:
     #
-    #   1. DSL syntax written inline -- `likelihood(y) ~ intercept()`. This arrives as an
-    #      `Expr` (head `:~` / `:call`) and must be RENDERED to DSL text, because
-    #      `bstm_core` takes a formula *string*. `string(::Expr)` is what performs that
-    #      rendering, and it is the whole reason the inline form has ever worked.
+    #   1. DSL syntax written inline -- `likelihood(y) ~ intercept()`.
     #   2. A `String` literal -- `formula = "y ~ x"`. Used directly.
-    #   3. Anything else is a VALUE, not DSL text: a variable holding the formula
-    #      (`@bstm(f, df)` -> `Symbol(:f)`) or an interpolated string
-    #      (`@bstm("y ~ $term", df)` -> `Expr(:string, ...)`). These must be evaluated
-    #      in the caller's scope at run time. Stringifying them produced the variable's
-    #      NAME, so the DSL read `"f"` as the formula and complained that outcome
-    #      variable `:f` was not a column -- an error that pointed at the data rather
-    #      than at the real mistake.
-    #
-    # A bare `Symbol` is unambiguous: DSL syntax always contains a call, so a lone symbol
-    # can only be a variable reference.
+    #   3. A variable or expression evaluated at run time.
     formula_runtime = if formula_expr isa String
         nothing
     elseif formula_expr isa Symbol
@@ -3874,13 +3861,17 @@ macro bstm(exprs...)
     end
     data_esc = esc(data_expr)
     kwargs_esc = [esc(kw) for kw in final_kwargs]
-    core_logic = :(bstm_core($formula_str, $data_esc, $(__module__); $(kwargs_esc...)))
+    core_logic = :(TethysBayes_core($formula_str, $data_esc, $(__module__); $(kwargs_esc...)))
     if !isnothing(var_name)
         return :($(esc(var_name)) = $core_logic)
     else
         return core_logic
     end
 end
+
+# Backward-compatibility aliases
+const var"@TethysBayes" = var"@tbm"
+const var"@bstm" = var"@tbm"
 """
     _print_param(name, value, status; indent=4)
 A helper function to print a single parameter with its value and status in a
@@ -3909,7 +3900,7 @@ end
 
     _print_finalized_parameters(config::NamedTuple)
 Prints a comprehensive and well-formatted summary of all finalized parameters for each
-module used in the `bstm` model. This function is called when `verbose=true`.
+module used in the `TethysBayes` model. This function is called when `verbose=true`.
 It details the configuration for the likelihood, intercept, fixed effects, and all
 random/smooth components. For each parameter, it shows the final value that will be
 used in the model and indicates whether this value was explicitly provided by the user
@@ -4031,15 +4022,15 @@ end
 """
     WorldAgeTrampoline{F}
 Callable wrapper that defers to a runtime-generated function via `Base.invokelatest`.
-`bstm` generates the Turing model body at runtime with `Core.eval`, which defines a
+`TethysBayes` generates the Turing model body at runtime with `Core.eval`, which defines a
 brand-new *method* at call time. Julia resolves world age at the call site, so
 already-compiled code — including DynamicPPL's `_evaluate!!` — cannot see that method
 and raises
-    MethodError: no method matching bstm_dynamic_model_XXXX(::Model, ::AbstractVarInfo, ...)
+    MethodError: no method matching TethysBayes_dynamic_model_XXXX(::Model, ::AbstractVarInfo, ...)
     Closest candidates are: ... (method too new to be called from this world context.)
 which breaks the ordinary
     function run()
-        m = @bstm(...)
+        m = @tbm(...)
         sample(m, NUTS())   # <- MethodError
     end
 pattern whenever the model is constructed inside a function rather than at top level.
@@ -4075,8 +4066,8 @@ function make_world_age_safe(model::DynamicPPL.Model)
     return DynamicPPL.Model{threaded}(tramp, model.args, model.defaults, model.context)
 end
 """
-    bstm_core(formula::String, data::DataFrame, calling_module::Module; kwargs...)
-The main entry point for the `@bstm` macro. This function orchestrates the configuration,
+    TethysBayes_core(formula::String, data::DataFrame, calling_module::Module; kwargs...)
+The main entry point for the `@tbm` macro. This function orchestrates the configuration,
 code generation, and instantiation of a Turing model.
 # Version
 v1.0.0
@@ -4085,22 +4076,22 @@ v1.0.0
 - `formula::String`: The model formula.
 - `data::DataFrame`: The input data.
 - `calling_module::Module`: The module in which the model was called (used for context).
-- `kwargs...`: Additional keyword arguments passed to `bstm_config`.
+- `kwargs...`: Additional keyword arguments passed to `TethysBayes_config`.
 
 # Returns
 - An instantiated and validated Turing model object.
 """
-function bstm_core(formula::String, data::DataFrame, calling_module::Module; kwargs...)
+function TethysBayes_core(formula::String, data::DataFrame, calling_module::Module; kwargs...)
     # --- 1. Configuration ---
     # Generate model configuration dictionary based on formula syntax and data schema.
-    options = bstm_config(formula, data; calling_module=calling_module,
-        kwargs...) # Pass kwargs to bstm_config
+    options = TethysBayes_config(formula, data; calling_module=calling_module,
+        kwargs...) # Pass kwargs to TethysBayes_config
     # --- 2. Code Generation ---
     # Generate a unique name for the model function to avoid world age issues.
     random_suffix = rand(10000:99999)
-    model_func_name = Symbol("bstm_dynamic_model_$(random_suffix)")
+    model_func_name = Symbol("TethysBayes_dynamic_model_$(random_suffix)")
     # Call the text assembler to get the model's source code, expression, and registry.
-    model_string, expr, registry = bstm_text_assembler(options, model_func_name)
+    model_string, expr, registry = TethysBayes_text_assembler(options, model_func_name)
     # Update the configuration with the generated model code for inspection.
     config_dict = Dict(pairs(options))
     config_dict[:generated_model_code] = model_string
@@ -4141,7 +4132,7 @@ function bstm_core(formula::String, data::DataFrame, calling_module::Module; kwa
         end
     catch e 
         # Provide detailed, user-friendly error diagnostics if the check fails.
-        _bstm_error_handler(e, model_instance)
+        _TethysBayes_error_handler(e, model_instance)
     end
     if get(new_config, :verbose, true)
         println("--------------------------------------\n")
@@ -4155,48 +4146,48 @@ end
 
 """
 
-    bstm_core(formula::String, data::DataFrame; kwargs...)
-A convenience overload for the main `bstm` constructor. This method defaults the
+    TethysBayes_core(formula::String, data::DataFrame; kwargs...)
+A convenience overload for the main `TethysBayes` constructor. This method defaults the
 model's evaluation scope to the `Main` module.
 
 # Arguments
 - `formula::String`: The model formula.
 - `data::DataFrame`: The input data.
-- `kwargs...`: Additional keyword arguments passed to the main `bstm` constructor.
+- `kwargs...`: Additional keyword arguments passed to the main `TethysBayes` constructor.
 
 # Returns
 - An instantiated Turing model object.
 """
 
-function bstm_core(formula::String, data::DataFrame; kwargs...)
+function TethysBayes_core(formula::String, data::DataFrame; kwargs...)
 
-    return bstm_core(formula, data, Main; kwargs...)
+    return TethysBayes_core(formula, data, Main; kwargs...)
 
 end
 
 
-function bstm_core(formula::Union{Expr, Symbol}, data::DataFrame, calling_module::Module=Main;
+function TethysBayes_core(formula::Union{Expr, Symbol}, data::DataFrame, calling_module::Module=Main;
     kwargs...)
-    return bstm_core(string(formula), data, calling_module; kwargs...)
+    return TethysBayes_core(string(formula), data, calling_module; kwargs...)
 end
 
 
 
 """
 
-    bstm_core(equation_pairs::Pair{Symbol, <:Union{NamedTuple, AbstractDict}}...; calling_module::Module=Main, kwargs...)
+    TethysBayes_core(equation_pairs::Pair{Symbol, <:Union{NamedTuple, AbstractDict}}...; calling_module::Module=Main, kwargs...)
 Constructs and instantiates a Turing model from a system of paired multi-fidelity equations.
 
 """
-function bstm_core(
+function TethysBayes_core(
     equation_pairs::Pair{Symbol, <:Union{NamedTuple, AbstractDict}}...;
     calling_module::Module = Main,
     kwargs...
 )
-    options = bstm_config(equation_pairs...; calling_module = calling_module, kwargs...)
+    options = TethysBayes_config(equation_pairs...; calling_module = calling_module, kwargs...)
     random_suffix = rand(10000:99999)
-    model_func_name = Symbol("bstm_dynamic_model_$(random_suffix)")
-    model_string, expr, registry = bstm_text_assembler(options, model_func_name)
+    model_func_name = Symbol("TethysBayes_dynamic_model_$(random_suffix)")
+    model_string, expr, registry = TethysBayes_text_assembler(options, model_func_name)
     config_dict = Dict(pairs(options))
     config_dict[:generated_model_code] = model_string
     delete!(config_dict, :calling_module)
@@ -4230,7 +4221,7 @@ function bstm_core(
             registry[:parameters] = current_reg
         end
     catch e
-        _bstm_error_handler(e, model_instance)
+        _TethysBayes_error_handler(e, model_instance)
     end
     if get(new_config, :verbose, true)
         println("--------------------------------------\n")
@@ -4264,7 +4255,7 @@ end
 
 """
 
-    bstm_text_assembler(config::NamedTuple, model_func_name::Symbol)
+    TethysBayes_text_assembler(config::NamedTuple, model_func_name::Symbol)
 Assembles the full Turing model code as a string and a Julia `Expr` from the
 provided configuration.
 # Version
@@ -4275,7 +4266,7 @@ v1.0.0
 # Returns
 - A tuple `(model_string, expr, registry)`.
 """
-function bstm_text_assembler(M::NamedTuple, model_func_name::Symbol)
+function TethysBayes_text_assembler(M::NamedTuple, model_func_name::Symbol)
     arch = get(M, :model_arch, "univariate")
     is_multivariate = arch == "multivariate"
     eta_name = is_multivariate ? "eta_latent" : "eta"
@@ -4474,7 +4465,7 @@ Print the offending generated code with line numbers before rethrowing, so a cod
 regression can be read without re-running under a debugger.
 """
 function report_generated_model_error(model_string::AbstractString, err)
-    println("BSTM Assembler Error: the generated model code failed to parse.")
+    println("TethysBayes Assembler Error: the generated model code failed to parse.")
     numbered = String[]
     for (i, l) in enumerate(eachline(IOBuffer(model_string)))
         push!(numbered, string(lpad(i, 5), " | ", l))
@@ -5304,19 +5295,19 @@ function create_fixed_design(
         return NamedArray(model_matrix_numeric, (1:size(model_matrix_numeric, 1),
             label_vector)), applied_formula
     catch design_error
-        @warn "BSTM Registry: create_fixed_design expansion failed for: '$final_rhs_string'. Error of type '$(typeof(design_error))' occurred. Check formula syntax and variable names."
+        @warn "TethysBayes Registry: create_fixed_design expansion failed for: '$final_rhs_string'. Error of type '$(typeof(design_error))' occurred. Check formula syntax and variable names."
         return NamedArray(zeros(size(df_internal, 1), 0), (1:size(df_internal, 1),
             Symbol[])), nothing
     end
 end
 """
     show_model(m::DynamicPPL.Model)
-Displays a comprehensive and well-formatted summary of the `bstm` model configuration,
+Displays a comprehensive and well-formatted summary of the `TethysBayes` model configuration,
 including likelihoods, priors, and component-specific parameters.
 # Version
 v1.0.0
 # Arguments
-- `m`: The Turing model instance generated by `@bstm`.
+- `m`: The Turing model instance generated by `@tbm`.
 # Returns
 - `nothing`. The function prints the summary to the console.
 """
@@ -5602,7 +5593,7 @@ function model_pseudocode(m::DynamicPPL.Model)
         push!(lines, "    eta = $(eta_var_name) * correlation_cholesky.L'")
     end
     push!(lines, "\n    # --- Likelihood ---")
-    # Construct a more complete bstm_Likelihood call for pseudo-code
+    # Construct a more complete TethysBayes_Likelihood call for pseudo-code
     lik_kwargs_parts = String[]
     if family == "negbin"
         push!(lik_kwargs_parts, "r_nb=r_nb")
@@ -5636,17 +5627,14 @@ function model_pseudocode(m::DynamicPPL.Model)
     end
     lik_kwargs_str = isempty(lik_kwargs_parts) ? "" : "; $(join(lik_kwargs_parts, ", "))"
     if is_multivariate
-        push!(lines, "    M.y_obs ~ bstm_Likelihood(\"$(family)\", eta $(lik_kwargs_str))")
+        push!(lines, "    M.y_obs ~ TethysBayes_Likelihood(\"$(family)\", eta $(lik_kwargs_str))")
     else
-        push!(lines, "    M.y_obs ~ bstm_Likelihood(\"$(family)\", eta $(lik_kwargs_str))")
+        push!(lines, "    M.y_obs ~ TethysBayes_Likelihood(\"$(family)\", eta $(lik_kwargs_str))")
     end
     push!(lines, "end")
     return join(lines, "\n")
 end
-"""
-    bstm_bspline_basis(x::AbstractVector, n_basis::Int, degree::Int; ...)
-Generates a B-spline basis matrix. This version is CPU-only.
-"""
+
 """
     extract_model_body(text::String)::String
 
@@ -5690,7 +5678,12 @@ function extract_model_body(text::String)::String
     return join(body_lines, "\n")
 end
 
-function bstm_bspline_basis(x::AbstractVector, n_basis::Int, degree::Int;
+"""
+    TethysBayes_bspline_basis(x::AbstractVector, n_basis::Int, degree::Int; ...)
+
+Generates a B-spline basis matrix. This version is CPU-only.
+"""
+function TethysBayes_bspline_basis(x::AbstractVector, n_basis::Int, degree::Int;
     knot_method::Symbol=:quantile, custom_knots::Union{AbstractVector, Nothing}=nothing)
     p = degree
     if n_basis <= p
@@ -5746,11 +5739,11 @@ function bstm_bspline_basis(x::AbstractVector, n_basis::Int, degree::Int;
     return (B[:, 1:n_basis], n_basis)
 end
 """
-    bstm_tensor_product_basis(coords::AbstractMatrix, nbins_per_dim::Vector{Int},
+    TethysBayes_tensor_product_basis(coords::AbstractMatrix, nbins_per_dim::Vector{Int},
       degrees_per_dim::Vector{Int}; ...)
 Generates a tensor product B-spline basis matrix. This version is CPU-only.
 """
-function bstm_tensor_product_basis(coords::AbstractMatrix, nbins_per_dim::Vector{Int},
+function TethysBayes_tensor_product_basis(coords::AbstractMatrix, nbins_per_dim::Vector{Int},
     degrees_per_dim::Vector{Int}; knot_method::Symbol=:quantile, kwargs...)
     n_dims = size(coords, 2)
     if length(nbins_per_dim) != n_dims || length(degrees_per_dim) != n_dims
@@ -5767,7 +5760,7 @@ function bstm_tensor_product_basis(coords::AbstractMatrix, nbins_per_dim::Vector
             :custom_knots) && local_bspline_kwargs[:custom_knots] isa Tuple
             local_bspline_kwargs[:custom_knots] = local_bspline_kwargs[:custom_knots][i]
         end
-        basis_mat, _ = bstm_bspline_basis(
+        basis_mat, _ = TethysBayes_bspline_basis(
             coords[:, i], 
             nbins_per_dim[i], 
             degrees_per_dim[i]; 
@@ -5792,10 +5785,10 @@ function bstm_tensor_product_basis(coords::AbstractMatrix, nbins_per_dim::Vector
     return B_final
 end
 """
-    bstm_wavelet_basis_1D(vals::AbstractVector, nbins::Int, family::Symbol, length_scale::Float64)
+    TethysBayes_wavelet_basis_1D(vals::AbstractVector, nbins::Int, family::Symbol, length_scale::Float64)
 Generates a 1D wavelet basis matrix. This version is CPU-only.
 """
-function bstm_wavelet_basis_1D(vals::AbstractVector, nbins::Int, family::Symbol,
+function TethysBayes_wavelet_basis_1D(vals::AbstractVector, nbins::Int, family::Symbol,
     length_scale::Float64)
     Interpolations = Base.require(Base.Main, :Interpolations)
     n_obs = length(vals)
@@ -5919,7 +5912,7 @@ function _reconstruct_wavelet_function_from_filters(h::Vector{Float64}, g::Vecto
     return x_grid_final, psi_next_vals
 end
 """
-    bstm_tensor_product_wavelet_basis(coords::AbstractMatrix, nbins_per_dim::Vector{Int},
+    TethysBayes_tensor_product_wavelet_basis(coords::AbstractMatrix, nbins_per_dim::Vector{Int},
       family::Symbol, length_scale::Union{Real, AbstractVector})
 Generates a multi-dimensional wavelet basis matrix via a tensor product of 1D bases.
 # Version
@@ -5938,7 +5931,7 @@ the rows of the 1D basis matrices.
 # Returns
 - A basis matrix of size `(N, prod(nbins_per_dim))`.
 """
-function bstm_tensor_product_wavelet_basis(coords::AbstractMatrix, nbins_per_dim::Vector{Int},
+function TethysBayes_tensor_product_wavelet_basis(coords::AbstractMatrix, nbins_per_dim::Vector{Int},
     family::Symbol, length_scale::Union{Real, AbstractVector})
     n_dims = size(coords, 2)
     if length(nbins_per_dim) != n_dims
@@ -5953,7 +5946,7 @@ function bstm_tensor_product_wavelet_basis(coords::AbstractMatrix, nbins_per_dim
         length_scale
     end
     # Generate a 1D wavelet basis matrix for each dimension.
-    basis_matrices_1D = [bstm_wavelet_basis_1D(coords[:, i], nbins_per_dim[i], family,
+    basis_matrices_1D = [TethysBayes_wavelet_basis_1D(coords[:, i], nbins_per_dim[i], family,
         length_scale_vec[i]) for i in 1:n_dims]
     if isempty(basis_matrices_1D)
         return zeros(size(coords, 1), 0)
@@ -5976,10 +5969,10 @@ function bstm_tensor_product_wavelet_basis(coords::AbstractMatrix, nbins_per_dim
     return B_final
 end
 """
-    bstm_smooth_basis_1D(type::String, vals::AbstractVector, nbins::Int, degree::Int; ...)
+    TethysBayes_smooth_basis_1D(type::String, vals::AbstractVector, nbins::Int, degree::Int; ...)
 Generates a 1D basis matrix. This version is CPU-only.
 """
-function bstm_smooth_basis_1D(
+function TethysBayes_smooth_basis_1D(
     type::String, 
     vals::AbstractVector, 
     nbins::Int, 
@@ -6002,7 +5995,7 @@ function bstm_smooth_basis_1D(
         quantile(vals, range(0, 1, length=nbins))
     end
     if type in ["pspline", "bspline"]
-        return bstm_bspline_basis(vals, nbins, degree; knot_method=knot_method,
+        return TethysBayes_bspline_basis(vals, nbins, degree; knot_method=knot_method,
             custom_knots=custom_knots)
     end
     B_out = Matrix{Float64}(undef, n_obs, nbins); fill!(B_out, 0.0)
@@ -6043,7 +6036,7 @@ function bstm_smooth_basis_1D(
     elseif type == "wavelet"
         family = get(kwargs, :family, :db4)
         length_scale = get(kwargs, :length_scale, 0.1)
-        B_out = bstm_wavelet_basis_1D(vals, nbins, family, length_scale)
+        B_out = TethysBayes_wavelet_basis_1D(vals, nbins, family, length_scale)
     elseif type == "spherical"
         range_r = get(kwargs, :range, v_std * 2.0)
         for m in 1:nbins
@@ -6058,10 +6051,10 @@ function bstm_smooth_basis_1D(
     return B_out, actual_nbins_generated
 end
 """
-    bstm_smooth_basis_2D(type::String, coords::AbstractMatrix, nbins::Union{Int, Vector{Int}}; ...)
+    TethysBayes_smooth_basis_2D(type::String, coords::AbstractMatrix, nbins::Union{Int, Vector{Int}}; ...)
 Generates a 2D basis matrix. This version is CPU-only.
 """
-function bstm_smooth_basis_2D(
+function TethysBayes_smooth_basis_2D(
     type::String, 
     coords::AbstractMatrix, 
     nbins::Union{Int, Vector{Int}}; 
@@ -6097,15 +6090,15 @@ function bstm_smooth_basis_2D(
     B = Matrix{Float64}(undef, n_obs, total_bins); fill!(B, 0.0)
     if type == "barycentric"
         knot_points = [Point2D(kx[i], ky[j]) for j in 1:n_marginal_y for i in 1:n_marginal_x]
-        B = bstm_barycentric_basis_2D(coords, knot_points)
+        B = TethysBayes_barycentric_basis_2D(coords, knot_points)
     elseif type in ["pspline", "bspline"]
         degree_val = get(kwargs, :degree, 3)
-        B = bstm_tensor_product_basis(coords, [n_marginal_x, n_marginal_y], [degree_val,
+        B = TethysBayes_tensor_product_basis(coords, [n_marginal_x, n_marginal_y], [degree_val,
             degree_val]; knot_method=knot_method, kwargs...)
     elseif type == "wavelet"
         family = get(kwargs, :family, :db4)
         length_scale = get(kwargs, :length_scale, 0.1)
-        B = bstm_tensor_product_wavelet_basis(coords, [n_marginal_x, n_marginal_y], family,
+        B = TethysBayes_tensor_product_wavelet_basis(coords, [n_marginal_x, n_marginal_y], family,
             length_scale)
     elseif type in ["smooth", "linear"]
         hx = (c_max[1] - c_min[1]) / (n_marginal_x > 1 ? (n_marginal_x - 1) : 1.0); hx = hx > 0 ? hx : 1.0
@@ -6141,10 +6134,10 @@ function bstm_smooth_basis_2D(
     return B[:, 1:min(total_bins, size(B, 2))]
 end
 """
-    bstm_smooth_basis_3D(type::String, coords::AbstractMatrix, nbins::Union{Int, Vector{Int}}; ...)
+    TethysBayes_smooth_basis_3D(type::String, coords::AbstractMatrix, nbins::Union{Int, Vector{Int}}; ...)
 Generates a 3D basis matrix. This version is CPU-only.
 """
-function bstm_smooth_basis_3D(
+function TethysBayes_smooth_basis_3D(
     type::String, 
     coords::AbstractMatrix, 
     nbins::Union{Int, Vector{Int}}; 
@@ -6182,12 +6175,12 @@ function bstm_smooth_basis_3D(
     B = Matrix{Float64}(undef, n_obs, total_bins); fill!(B, 0.0)
     if type in ["pspline", "bspline"]
         degree_val = get(kwargs, :degree, 3)
-        B = bstm_tensor_product_basis(coords, [n_marginal_x, n_marginal_y, n_marginal_z],
+        B = TethysBayes_tensor_product_basis(coords, [n_marginal_x, n_marginal_y, n_marginal_z],
             fill(degree_val, 3); knot_method=knot_method, kwargs...)
     elseif type == "wavelet"
         family = get(kwargs, :family, :db4)
         length_scale = get(kwargs, :length_scale, 0.1)
-        B = bstm_tensor_product_wavelet_basis(coords, [n_marginal_x, n_marginal_y,
+        B = TethysBayes_tensor_product_wavelet_basis(coords, [n_marginal_x, n_marginal_y,
             n_marginal_z], family, length_scale)
     elseif type in ["smooth", "barycentric", "linear"]
         hx = (c_max[1] - c_min[1]) / (n_marginal_x > 1 ? (n_marginal_x - 1) : 1.0); hx = hx > 0 ? hx : 1.0
@@ -6215,10 +6208,10 @@ function bstm_smooth_basis_3D(
     return B[:, 1:min(total_bins, size(B, 2))]
 end
 """
-    bstm_smooth_basis_4D(type::String, coords::AbstractMatrix, nbins::Union{Int, Vector{Int}}; ...)
+    TethysBayes_smooth_basis_4D(type::String, coords::AbstractMatrix, nbins::Union{Int, Vector{Int}}; ...)
 Generates a 4D basis matrix. This version is CPU-only.
 """
-function bstm_smooth_basis_4D(
+function TethysBayes_smooth_basis_4D(
     type::String, 
     coords::AbstractMatrix, 
     nbins::Union{Int, Vector{Int}}; 
@@ -6259,12 +6252,12 @@ function bstm_smooth_basis_4D(
     B = Matrix{Float64}(undef, n_obs, total_bins); fill!(B, 0.0)
     if type in ["pspline", "bspline"]
         degree_val = get(kwargs, :degree, 3)
-        B = bstm_tensor_product_basis(coords, [n_marginal_1, n_marginal_2, n_marginal_3,
+        B = TethysBayes_tensor_product_basis(coords, [n_marginal_1, n_marginal_2, n_marginal_3,
             n_marginal_4], fill(degree_val, 4); knot_method=knot_method, kwargs...)
     elseif type == "wavelet"
         family = get(kwargs, :family, :db4)
         length_scale = get(kwargs, :length_scale, 0.1)
-        B = bstm_tensor_product_wavelet_basis(coords, [n_marginal_1, n_marginal_2,
+        B = TethysBayes_tensor_product_wavelet_basis(coords, [n_marginal_1, n_marginal_2,
             n_marginal_3, n_marginal_4], family, length_scale)
     elseif type in ["smooth", "linear", "barycentric"]
         hx1 = (c_max[1] - c_min[1]) / (n_marginal_1 > 1 ? (n_marginal_1 - 1) : 1.0); hx1 = hx1 > 0 ? hx1 : 1.0
@@ -7040,7 +7033,7 @@ function precompute_step_sizes(
 end
 """
     get_optimal_sampler(model_obj::DynamicPPL.Model; ...)
-Constructs a mathematically optimal composite MCMC sampler for a `bstm` model by
+Constructs a mathematically optimal composite MCMC sampler for a `TethysBayes` model by
 assigning specialized samplers to parameter blocks with Roberts & Rosenthal (2001)
 dimensional step-size scaling (ϵ ~ O(D^(-1/4))), dual-averaging warmup lengths,
 spectral condition-number depth bounds, and adaptive Euclidean metric conditioning.
@@ -7394,7 +7387,7 @@ function get_optimal_sampler(
 end
 """
     extract_param_matrix(chain, var_id; expected_dim=nothing)::Matrix{Float64}
-Canonical, zero-fail parameter extraction engine for BSTM.
+Canonical, zero-fail parameter extraction engine for TethysBayes.
 Extracts samples for `var_id` (Symbol, String, or DynamicPPL.VarName) across all chain backends
 (`VNChain`, `FlexiChain`, `MCMCChains.Chains`, `DataFrame`, `Dict`, `NamedTuple`) and returns a
 standardized 2D `Matrix{Float64}` of size `(n_samples, dim)`.
@@ -7605,7 +7598,7 @@ end
     convert_to_chains(res, model=nothing, n_samples::Int=100; kwargs...)
 Converts optimization results (`maximum_likelihood`, `maximum_a_posteriori`) or
 variational inference results (`vi`) from Turing into a sample dictionary format
-directly consumable by BSTM reconstruction, diagnostics, and plotting routines.
+directly consumable by TethysBayes reconstruction, diagnostics, and plotting routines.
 # Mathematical Formulation
 For maximum likelihood (ML) or maximum a posteriori (MAP) estimation, the optimizer
 yields a mode point estimate \$\\hat{\\theta}\$:
@@ -7692,8 +7685,8 @@ function convert_to_chains(res, model=nothing, n_samples::Int=100; kwargs...)
     return res
 end
 """
-    bstm_sample(model::DynamicPPL.Model, n_samples::Int; kwargs...)
-A convenience wrapper for `bstm_sample` that automatically selects an optimal sampler
+    TethysBayes_sample(model::DynamicPPL.Model, n_samples::Int; kwargs...)
+A convenience wrapper for `TethysBayes_sample` that automatically selects an optimal sampler
 if one is not provided.
 # Arguments
 - `model`: The Turing model object.
@@ -7702,7 +7695,7 @@ if one is not provided.
 # Returns
 - The MCMC chain object returned by `Turing.sample`.
 """
-function bstm_sample(model::DynamicPPL.Model, n_samples::Int; kwargs...)
+function TethysBayes_sample(model::DynamicPPL.Model, n_samples::Int; kwargs...)
     # Separate kwargs for get_optimal_sampler and the main sample call.
     sampler_kwargs = Dict{Symbol, Any}()
     sample_kwargs = Dict{Symbol, Any}()
@@ -7727,13 +7720,13 @@ function bstm_sample(model::DynamicPPL.Model, n_samples::Int; kwargs...)
     end
     @info "Sampler not provided. Automatically selecting an optimal sampler with principled warmup scaling..."
     sampler = get_optimal_sampler(model; sampler_kwargs...)
-    return bstm_sample(model, sampler, n_samples; n_chains=n_chains, sample_kwargs...)
+    return TethysBayes_sample(model, sampler, n_samples; n_chains=n_chains, sample_kwargs...)
 end
 
  
 
 """
-    bstm_sample(model, sampler, n_samples; n_chains=1, kwargs...)
+    TethysBayes_sample(model, sampler, n_samples; n_chains=1, kwargs...)
 A wrapper around `Turing.sample` that defaults to the `MCMCThreads` backend for
 both single and multi-chain sampling, ensuring consistent output dimensionality.
 # Arguments
@@ -7745,7 +7738,7 @@ both single and multi-chain sampling, ensuring consistent output dimensionality.
 # Returns
 - A 3-dimensional MCMC chain object.
 """
-function bstm_sample(model, sampler, n_samples; n_chains::Int=1, kwargs...)
+function TethysBayes_sample(model, sampler, n_samples; n_chains::Int=1, kwargs...)
     local chain
     @info "Running $(n_chains) chain(s) using MCMCThreads() backend."
     chain = Base.invokelatest(sample, model, sampler, MCMCThreads(), n_samples, n_chains; kwargs...)
@@ -7940,13 +7933,13 @@ function _generate_univariate_likelihood_block(M::NamedTuple; prefix::String = "
         kwargs_i_str = join(kwargs_parts_i, ", ")
         """
         $(extra_param_logic)
-        log_lik_sum = sum(i -> Distributions.logpdf(bstm_Likelihood($(family_symbol), eta[i]; $(kwargs_i_str)), M.y_obs[i]), 1:length(eta))
+        log_lik_sum = sum(i -> Distributions.logpdf(TethysBayes_Likelihood($(family_symbol), eta[i]; $(kwargs_i_str)), M.y_obs[i]), 1:length(eta))
         """
     else
         kwargs_str = join(kwargs_parts, ", ")
         """
         $(extra_param_logic)
-        d_lik_vec = bstm_Likelihood.($(family_symbol), eta; $(kwargs_str))
+        d_lik_vec = TethysBayes_Likelihood.($(family_symbol), eta; $(kwargs_str))
         log_lik_sum = sum(Distributions.logpdf.(d_lik_vec, M.y_obs))
         """
     end
@@ -7993,7 +7986,7 @@ function _generate_multivariate_likelihood_block(M::NamedTuple; prefix::String =
         return """
         let
             local log_lik_sum
-            d_lik_vec = [bstm_Likelihood(:"mvnormal", collect(view(eta_latent, i, :));
+            d_lik_vec = [TethysBayes_Likelihood(:"mvnormal", collect(view(eta_latent, i, :));
                 sigma_y = $(y_sigma_name),
                 extra_params = Dict(:correlation_cholesky => $(L_corr_name)))
                 for i in 1:N]
@@ -8095,7 +8088,7 @@ function _generate_multivariate_likelihood_block(M::NamedTuple; prefix::String =
         kwargs_str = join(kwargs_parts, ", ")
         block_content = """
             $(extra_param_logic)
-            d_lik_vec_k = bstm_Likelihood.($(family_symbol), view(eta_correlated, :, $k);
+            d_lik_vec_k = TethysBayes_Likelihood.($(family_symbol), view(eta_correlated, :, $k);
               $(kwargs_str))
             Turing.@addlogprob! sum(Distributions.logpdf.(d_lik_vec_k, view(M.y_obs, :, $k)))
         """
@@ -8476,16 +8469,16 @@ function process_smooth_module!(
                 delete!(local_kwargs, :nbins)
                 B_smooth_matrix, actual_nbins_for_component = if n_vars == 1
                     v_vec = data[!, Symbol(mod_data[:variables][1])]
-                    bstm_smooth_basis_1D(model_str, v_vec, nbins_per_dim_vec[1], get(params,
+                    TethysBayes_smooth_basis_1D(model_str, v_vec, nbins_per_dim_vec[1], get(params,
                         :degree, 3); local_kwargs...)
                 else
                     c_mat = Matrix{Float64}(data[!, Symbol.(mod_data[:variables])])
                     B_matrix = if n_vars == 2
-                        bstm_smooth_basis_2D(model_str, c_mat, nbins_per_dim_vec; local_kwargs...)
+                        TethysBayes_smooth_basis_2D(model_str, c_mat, nbins_per_dim_vec; local_kwargs...)
                     elseif n_vars == 3
-                        bstm_smooth_basis_3D(model_str, c_mat, nbins_per_dim_vec; local_kwargs...)
+                        TethysBayes_smooth_basis_3D(model_str, c_mat, nbins_per_dim_vec; local_kwargs...)
                     elseif n_vars == 4
-                        bstm_smooth_basis_4D(model_str, c_mat, nbins_per_dim_vec; local_kwargs...)
+                        TethysBayes_smooth_basis_4D(model_str, c_mat, nbins_per_dim_vec; local_kwargs...)
                     else
                         error("Smoothers with more than 4 dimensions are not supported for this basis type.")
                     end
@@ -8583,7 +8576,7 @@ function process_eigen_module!(opt_dict, mod_data, registries, hyperpriors)
     end
     # Check for missing values in the specified columns.
     if any(col -> any(ismissing, data[!, col]), vars_sym)
-        error("Columns for eigen() module contain missing values. Please handle them before calling bstm().")
+        error("Columns for eigen() module contain missing values. Please handle them before calling TethysBayes().")
     end
     # Extract the data and center it (a standard assumption for PCA).
     eigen_data_matrix = Matrix(data[!, vars_sym])
@@ -8630,8 +8623,8 @@ function process_mixed_module!(opt_dict, mod_data, registries, hyperpriors)
         @warn "The mixed() module requires syntax `mixed(effect | group)` or `mixed(effect, group)`. Skipping."
         return false
     end
-    # Replace bstm-specific modules like `intercept()` with `1` for StatsModels.jl.
-    effect_expr_mod = _replace_bstm_modules_in_expr(effect_expr)
+    # Replace TethysBayes-specific modules like `intercept()` with `1` for StatsModels.jl.
+    effect_expr_mod = _replace_TethysBayes_modules_in_expr(effect_expr)
     schema = StatsModels.schema(data)
     terms = if effect_expr_mod isa Number
         StatsModels.term(effect_expr_mod)
@@ -8868,7 +8861,7 @@ end
 """
     process_nested_module!(opt_dict, mod_data, registries, hyperpriors)
 Processes the `nested()` module for multi-fidelity or joint models. This function
-recursively calls `bstm_config` to create a complete and independent configuration
+recursively calls `TethysBayes_config` to create a complete and independent configuration
 for the sub-model defined within the `nested()` call.
 # Arguments
 - `opt_dict`: The main model configuration dictionary.
@@ -8904,7 +8897,7 @@ function process_nested_module!(opt_dict, mod_data, registries, hyperpriors)
         return false
     end
     sub_data = opt_dict[data_source_sym]
-    # Prepare keyword arguments for the recursive bstm_config call.
+    # Prepare keyword arguments for the recursive TethysBayes_config call.
     # Exclude internal state keys specific to the parent model.
     sub_config_kwargs = copy(opt_dict)
     keys_to_exclude = [
@@ -8945,9 +8938,9 @@ function process_nested_module!(opt_dict, mod_data, registries, hyperpriors)
     # Validate observation count alignment or mapping
     parent_N = size(opt_dict[:data], 1)
     sub_N = size(sub_data, 1)
-    # Recursively call bstm_config to create a full configuration for the sub-model.
+    # Recursively call TethysBayes_config to create a full configuration for the sub-model.
     calling_mod = get(opt_dict, :calling_module, Main)
-    sub_config = bstm_config(
+    sub_config = TethysBayes_config(
         sub_formula_str, sub_data;
         calling_module = calling_mod,
         sub_config_kwargs...
@@ -9323,7 +9316,7 @@ function process_random_module!(
     # 6. Add the final spec to the main components list
     push!(registries[:components], spec)
 
-    # 7. Return false to signal to bstm_config that this component is fully processed
+    # 7. Return false to signal to TethysBayes_config that this component is fully processed
     return false
 end
 """
@@ -9997,7 +9990,7 @@ function process_dynamics_module!(
         end
     end
     if !haskey(opt_dict, :W)
-        error("Dynamics models require an adjacency matrix `W`, passed either to the module (e.g., `dynamics(..., W=my_W)`) or as a keyword argument to the main `@bstm` call (e.g., `@bstm(..., W=my_W)`).")
+        error("Dynamics models require an adjacency matrix `W`, passed either to the module (e.g., `dynamics(..., W=my_W)`) or as a keyword argument to the main `@tbm` call (e.g., `@tbm(..., W=my_W)`).")
     end
     if opt_dict[:s_N] != size(opt_dict[:W], 1)
         error("Number of unique spatial indices ($(opt_dict[:s_N])) does not match the dimension of the provided adjacency matrix W ($(size(opt_dict[:W], 1))).")

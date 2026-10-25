@@ -88,7 +88,7 @@ component.
 - `v_mat`: A `p x k` matrix where each column is a Householder reflector vector.
 - `p`: The number of original variables (`n_vars`).
 - `k`: The number of latent factors. This is a local dimension symbol in the maths
-  (`p` is likewise `n_vars`), not a bstm parameter name; the sampled quantity derived
+  (`p` is likewise `n_vars`), not a TethysBayes parameter name; the sampled quantity derived
   from it is `factors_flat_<key>`.
 
 # Returns

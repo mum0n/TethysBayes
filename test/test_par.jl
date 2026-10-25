@@ -1,8 +1,8 @@
 # ==============================================================================
-# BSTM Test Suite: Population Attributable Risk (PAR / PAF) Engine
+# TethysBayes Test Suite: Population Attributable Risk (PAR / PAF) Engine
 # ==============================================================================
 
-if !@isdefined(bstm_Likelihood)
+if !@isdefined(TethysBayes_Likelihood)
     include(joinpath(@__DIR__, "test_helpers.jl"))
 end
 
@@ -144,13 +144,13 @@ end
               exposed = repeat([0.0, 1.0], inner = n ÷ 2),
               y = repeat([2.0, 5.0], inner = n ÷ 2),
           )
-          me = bstm.bstm_core("likelihood(y, family=poisson) ~ intercept() + exposed",
+          me = TethysBayes.TethysBayes_core("likelihood(y, family=poisson) ~ intercept() + exposed",
                               dfe; verbose=false)
-          che = sample(MersenneTwister(3), me, bstm.Turing.MH(), 40;
+          che = sample(MersenneTwister(3), me, TethysBayes.Turing.MH(), 40;
                        progress=false, check_model=false)
 
           # With the outcome present it is a genuine count: PAF x total.
-          r = bstm.par_counterfactual(me, che; exposure_var="exposed", data=dfe)
+          r = TethysBayes.par_counterfactual(me, che; exposure_var="exposed", data=dfe)
           ytot = sum(dfe.y)
           @test isapprox(r.excess_cases_mean, r.paf_mean * ytot; rtol=1e-12)
           @test !isapprox(r.excess_cases_mean, r.paf_mean; rtol=1e-6)
@@ -158,7 +158,7 @@ end
 
           # Without it, the count is undefined and must be `nothing` -- the same
           # convention `par_mean` already uses, not a number that looks like a count.
-          r2 = bstm.par_counterfactual(me, che; exposure_var="exposed",
+          r2 = TethysBayes.par_counterfactual(me, che; exposure_var="exposed",
                                        data=select(dfe, :exposed))
           @test isnothing(r2.excess_cases_mean)
           @test isnothing(r2.excess_cases_ci_lower)
@@ -180,20 +180,20 @@ end
       # 1. The Gauss-Hermite table must integrate the weight's moments exactly. These
       #    are the exact values of int x^{2k} exp(-x^2) dx for k = 0,1,2,3, so a wrong
       #    table (wrong convention, e.g. probabilists' instead of physicists') fails here.
-      @test isapprox(sum(bstm._GH_WEIGHTS), sqrt(pi); rtol=1e-12)
-      @test isapprox(sum(bstm._GH_WEIGHTS .* bstm._GH_NODES.^2), sqrt(pi)/2; rtol=1e-12)
-      @test isapprox(sum(bstm._GH_WEIGHTS .* bstm._GH_NODES.^4), 3sqrt(pi)/4; rtol=1e-12)
-      @test isapprox(sum(bstm._GH_WEIGHTS .* bstm._GH_NODES.^6), 15sqrt(pi)/8; rtol=1e-12)
+      @test isapprox(sum(TethysBayes._GH_WEIGHTS), sqrt(pi); rtol=1e-12)
+      @test isapprox(sum(TethysBayes._GH_WEIGHTS .* TethysBayes._GH_NODES.^2), sqrt(pi)/2; rtol=1e-12)
+      @test isapprox(sum(TethysBayes._GH_WEIGHTS .* TethysBayes._GH_NODES.^4), 3sqrt(pi)/4; rtol=1e-12)
+      @test isapprox(sum(TethysBayes._GH_WEIGHTS .* TethysBayes._GH_NODES.^6), 15sqrt(pi)/8; rtol=1e-12)
 
       # 2. Quadrature must agree with brute-force Monte Carlo over a SHARED field.
       #    Sharing is the case the conditional value gets wrong.
       Random.seed!(99)
       us = randn(MersenneTwister(99), 2_000_000) .* sigma
       mc_p0 = mean(_logistic.(eta0 .+ us))
-      @test isapprox(bstm._logistic_normal_mean(eta0, sigma), mc_p0; rtol=3e-3)
+      @test isapprox(TethysBayes._logistic_normal_mean(eta0, sigma), mc_p0; rtol=3e-3)
 
       mc_rr = mean(_logistic.(eta0 .+ beta .+ us)) / mean(_logistic.(eta0 .+ us))
-      marg_rr = bstm._marginal_logit_rr(beta, eta0, s2)
+      marg_rr = TethysBayes._marginal_logit_rr(beta, eta0, s2)
       cond_rr = _logistic(eta0 + beta) / _logistic(eta0)
       @test isapprox(marg_rr, mc_rr; rtol=3e-3)
       # The conditional value must be measurably wrong, otherwise this test proves nothing.
@@ -202,12 +202,12 @@ end
 
       # 3. sigma -> 0 must recover the conditional value EXACTLY, so the correction is a
       #    strict generalisation and cannot perturb a random-effect-free model.
-      @test isapprox(bstm._marginal_logit_rr(beta, eta0, 0.0), cond_rr; rtol=1e-12)
-      @test isapprox(bstm._logistic_normal_mean(eta0, 0.0), _logistic(eta0); rtol=1e-12)
+      @test isapprox(TethysBayes._marginal_logit_rr(beta, eta0, 0.0), cond_rr; rtol=1e-12)
+      @test isapprox(TethysBayes._logistic_normal_mean(eta0, 0.0), _logistic(eta0); rtol=1e-12)
 
       # 4. Log link: closed form exp(eta0 + s2/2), and the population mean is exactly
       #    exp(s2/2) times the reference individual -- a RATIO, not a one-sided percentage.
-      pop = bstm._population_baseline_risk([eta0], "poisson", [s2])[1]
+      pop = TethysBayes._population_baseline_risk([eta0], "poisson", [s2])[1]
       @test isapprox(pop, exp(eta0 + s2/2); rtol=1e-12)
       @test isapprox(pop / exp(eta0), exp(s2/2); rtol=1e-12)
       @test isapprox(pop, mean(exp.(eta0 .+ us)); rtol=3e-3)
@@ -216,10 +216,10 @@ end
       # 5. `nothing` variance must NOT be treated as zero variance. This is the
       #    unavailable-vs-absent distinction; conflating them would silently apply a
       #    zero correction to a model whose field was never identified.
-      @test isnothing(bstm._population_baseline_risk([eta0], "poisson", nothing))
-      @test isnothing(bstm._population_baseline_risk([eta0], "poisson", Float64[]))
-      @test isnothing(bstm._population_baseline_risk([eta0], "poisson", [NaN]))
-      @test isnothing(bstm._random_effect_variance(DataFrame(x=fill(1.0, 3))))
+      @test isnothing(TethysBayes._population_baseline_risk([eta0], "poisson", nothing))
+      @test isnothing(TethysBayes._population_baseline_risk([eta0], "poisson", Float64[]))
+      @test isnothing(TethysBayes._population_baseline_risk([eta0], "poisson", [NaN]))
+      @test isnothing(TethysBayes._random_effect_variance(DataFrame(x=fill(1.0, 3))))
 
       # 6. `y_sigma` is observation noise and must be EXCLUDED from the field variance;
       #    folding it in would double-count residual variation.
@@ -229,13 +229,13 @@ end
           :sigma_region => reshape(fill(sigma, n), 1, n),
           :y_sigma => reshape(fill(3.0, n), 1, n),
       )
-      @test isapprox(bstm._random_effect_variance(ch_noise)[1], s2; rtol=1e-12)
+      @test isapprox(TethysBayes._random_effect_variance(ch_noise)[1], s2; rtol=1e-12)
       ch_no_field = Dict(
           :intercept => reshape(fill(eta0, n), 1, n),
           :beta_exposure => reshape(fill(beta, n), 1, n),
           :y_sigma => reshape(fill(3.0, n), 1, n),
       )
-      @test isnothing(bstm._random_effect_variance(ch_no_field))
+      @test isnothing(TethysBayes._random_effect_variance(ch_no_field))
 
       # 7. End-to-end: default is unchanged, population_average=true marginalizes.
       ch = Dict(
@@ -254,7 +254,7 @@ end
       @test isapprox(r_cond.baseline_risk, _logistic(eta0); rtol=1e-9)
       @test isapprox(r_cond.rr_mean, cond_rr; rtol=1e-9)
 
-      @test isapprox(r_pop.baseline_risk, bstm._logistic_normal_mean(eta0, sigma); rtol=1e-9)
+      @test isapprox(r_pop.baseline_risk, TethysBayes._logistic_normal_mean(eta0, sigma); rtol=1e-9)
       @test isapprox(r_pop.rr_mean, marg_rr; rtol=1e-9)
       @test r_pop.baseline_risk > r_cond.baseline_risk     # baseline goes up
       @test r_pop.rr_mean < r_cond.rr_mean                 # RR goes down

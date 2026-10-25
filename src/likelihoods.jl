@@ -2,35 +2,35 @@
     likelihoods.jl
 
 Observation models, likelihood evaluation kernels, censoring, and hurdle transformations
-for Bayesian Spatio-Temporal Models (BSTM).
+for Bayesian Spatio-Temporal Models (TethysBayes).
 
 Version: v1.0.0
 """
 
 
-abstract type AbstractBSTM_Family end
+abstract type AbstractTethysBayes_Family end
 
-struct PoissonFamily <: AbstractBSTM_Family end
-struct GaussianFamily <: AbstractBSTM_Family end
-struct LogNormalFamily <: AbstractBSTM_Family end
-struct NegativeBinomialFamily <: AbstractBSTM_Family end
-struct BinomialFamily <: AbstractBSTM_Family end
-struct GammaFamily <: AbstractBSTM_Family end
-struct ExponentialFamily <: AbstractBSTM_Family end
-struct BetaFamily <: AbstractBSTM_Family end
-struct InverseGaussianFamily <: AbstractBSTM_Family end
-struct StudentTFamily <: AbstractBSTM_Family end
-struct HalfNormalFamily <: AbstractBSTM_Family end
-struct HalfStudentTFamily <: AbstractBSTM_Family end
-struct LaplaceFamily <: AbstractBSTM_Family end
-struct ParetoFamily <: AbstractBSTM_Family end
-struct DirichletFamily <: AbstractBSTM_Family end
-struct InverseWishartFamily <: AbstractBSTM_Family end
-struct MultinomialFamily <: AbstractBSTM_Family end
-struct CategoricalFamily <: AbstractBSTM_Family end
-struct DirichletMultinomialFamily <: AbstractBSTM_Family end
-struct OrdinalFamily <: AbstractBSTM_Family end
-struct MvNormalFamily <: AbstractBSTM_Family end
+struct PoissonFamily <: AbstractTethysBayes_Family end
+struct GaussianFamily <: AbstractTethysBayes_Family end
+struct LogNormalFamily <: AbstractTethysBayes_Family end
+struct NegativeBinomialFamily <: AbstractTethysBayes_Family end
+struct BinomialFamily <: AbstractTethysBayes_Family end
+struct GammaFamily <: AbstractTethysBayes_Family end
+struct ExponentialFamily <: AbstractTethysBayes_Family end
+struct BetaFamily <: AbstractTethysBayes_Family end
+struct InverseGaussianFamily <: AbstractTethysBayes_Family end
+struct StudentTFamily <: AbstractTethysBayes_Family end
+struct HalfNormalFamily <: AbstractTethysBayes_Family end
+struct HalfStudentTFamily <: AbstractTethysBayes_Family end
+struct LaplaceFamily <: AbstractTethysBayes_Family end
+struct ParetoFamily <: AbstractTethysBayes_Family end
+struct DirichletFamily <: AbstractTethysBayes_Family end
+struct InverseWishartFamily <: AbstractTethysBayes_Family end
+struct MultinomialFamily <: AbstractTethysBayes_Family end
+struct CategoricalFamily <: AbstractTethysBayes_Family end
+struct DirichletMultinomialFamily <: AbstractTethysBayes_Family end
+struct OrdinalFamily <: AbstractTethysBayes_Family end
+struct MvNormalFamily <: AbstractTethysBayes_Family end
 
 abstract type AbstractZIState end
 struct NonZeroInflated <: AbstractZIState end
@@ -44,7 +44,7 @@ struct RightCensored <: AbstractCensoringState end
 struct IntervalCensored <: AbstractCensoringState end
 
 
-const BSTM_FAMILY_REGISTRY = Dict{String, AbstractBSTM_Family}(
+const TethysBayes_FAMILY_REGISTRY = Dict{String, AbstractTethysBayes_Family}(
     "poisson"               => PoissonFamily(),
     "gaussian"              => GaussianFamily(),
     "lognormal"             => LogNormalFamily(),
@@ -81,12 +81,12 @@ const STATSMODELS_CONTRASTS = Dict(
 
 
 """
-    bstm_Likelihood
+    TethysBayes_Likelihood
 
 Observation likelihood distribution parameterized by the linear predictor `param` (`eta`),
 supporting zero-inflation, hurdles, left/right/interval censoring, and observation weights.
 """
-struct bstm_Likelihood{
+struct TethysBayes_Likelihood{
     F, Z, C, W, P, PH, R, S, PR, TR, TL, TU, HT, EX
 } <: ContinuousMultivariateDistribution
     family::F
@@ -105,21 +105,21 @@ struct bstm_Likelihood{
     extra_params::EX
 end
 
-Base.length(d::bstm_Likelihood) = length(d.param)
-Base.size(d::bstm_Likelihood) = (length(d.param),)
+Base.length(d::TethysBayes_Likelihood) = length(d.param)
+Base.size(d::TethysBayes_Likelihood) = (length(d.param),)
 
 """
-    get_model_family(model_family::String)::AbstractBSTM_Family
+    get_model_family(model_family::String)::AbstractTethysBayes_Family
 
-Maps a string identifier to its corresponding concrete `AbstractBSTM_Family` singleton instance.
+Maps a string identifier to its corresponding concrete `AbstractTethysBayes_Family` singleton instance.
 """
 function get_model_family(model_family::String)
     family_key = lowercase(strip(model_family))
-    if haskey(BSTM_FAMILY_REGISTRY, family_key)
-        return BSTM_FAMILY_REGISTRY[family_key]
+    if haskey(TethysBayes_FAMILY_REGISTRY, family_key)
+        return TethysBayes_FAMILY_REGISTRY[family_key]
     else
         error("Unknown model_family: '$(model_family)'. " *
-              "Supported families are: $(keys(BSTM_FAMILY_REGISTRY))")
+              "Supported families are: $(keys(TethysBayes_FAMILY_REGISTRY))")
     end
 end
 
@@ -145,7 +145,7 @@ pathological inputs rather than serving a numerical necessity.
 const ETA_CLAMP_BOUND = 30.0
 
 # Generic fallback: distribution reference ignores obs_idx unless specialized
-get_dist_ref(fam::AbstractBSTM_Family, d, eta, sig, obs_idx::Int) =
+get_dist_ref(fam::AbstractTethysBayes_Family, d, eta, sig, obs_idx::Int) =
     get_dist_ref(fam, d, eta, sig)
 
 function get_dist_ref(::PoissonFamily, d, eta::V, sig, obs_idx::Int=1) where {V<:Real}
@@ -338,7 +338,7 @@ function get_dist_ref(::DirichletMultinomialFamily, d, eta_vec, sig, obs_idx::In
     return DirichletMultinomial(Int(n_total), alpha_params)
 end
 
-function bstm_kernel(
+function TethysBayes_kernel(
     fam::DirichletMultinomialFamily, ::Uncensored, ::NonZeroInflated, d, eta_vec, sig, y_vec,
     obs_idx::Int=1
 )
@@ -357,7 +357,7 @@ function get_dist_ref(::MultinomialFamily, d, eta_vec, sig, obs_idx::Int=1)
     return Multinomial(Int(n_total), probs)
 end
 
-function bstm_kernel(
+function TethysBayes_kernel(
     fam::MultinomialFamily, ::Uncensored, ::NonZeroInflated, d, eta_vec, sig, y_vec,
     obs_idx::Int=1
 )
@@ -375,7 +375,7 @@ function get_dist_ref(::CategoricalFamily, d, eta_vec, sig, obs_idx::Int=1)
     return Categorical(probs)
 end
 
-function bstm_kernel(
+function TethysBayes_kernel(
     fam::CategoricalFamily, ::Uncensored, ::NonZeroInflated, d, eta_vec, sig, y_val,
     obs_idx::Int=1
 )
@@ -396,7 +396,7 @@ function get_dist_ref(::DirichletFamily, d, eta_vec, sig, obs_idx::Int=1)
     return Dirichlet(alpha_params)
 end
 
-function bstm_kernel(
+function TethysBayes_kernel(
     fam::DirichletFamily, ::Uncensored, ::NonZeroInflated, d, eta_vec, sig, y_vec,
     obs_idx::Int=1
 )
@@ -493,7 +493,7 @@ function get_dist_ref(::MvNormalFamily, d, eta_vec, sig, obs_idx::Int=1)
     return MvNormal(collect(eta_vec), Symmetric(cov_mat))
 end
 
-function bstm_kernel(
+function TethysBayes_kernel(
     fam::MvNormalFamily, ::Uncensored, ::NonZeroInflated, d, eta_vec, sig, y_vec,
     obs_idx::Int=1
 )
@@ -507,18 +507,18 @@ function is_discrete_family(::Union{PoissonFamily, NegativeBinomialFamily, Binom
     return true
 end
 
-function is_discrete_family(::AbstractBSTM_Family)
+function is_discrete_family(::AbstractTethysBayes_Family)
     return false
 end
 
 """
-    bstm_Likelihood(family_input, param; kwargs...)
+    TethysBayes_Likelihood(family_input, param; kwargs...)
 
-Constructs a `bstm_Likelihood` distribution wrapper parameterized by linear predictor `param`
+Constructs a `TethysBayes_Likelihood` distribution wrapper parameterized by linear predictor `param`
 (`eta`), incorporating censoring, zero-inflation, hurdles, dispersion, and observation weights.
 Supports both scalar and vectorized per-observation modifiers with rigorous validation.
 """
-function bstm_Likelihood(
+function TethysBayes_Likelihood(
     family_input::Union{String, Symbol},
     param;
     zi_state = nothing,
@@ -541,7 +541,7 @@ function bstm_Likelihood(
     function _validate_obs_param(x, name::Symbol)
         if x isa AbstractArray
             if isempty(x)
-                throw(ArgumentError("Parameter ':$name' in bstm_Likelihood cannot be an empty array."))
+                throw(ArgumentError("Parameter ':$name' in TethysBayes_Likelihood cannot be an empty array."))
             elseif length(x) == 1
                 return first(x)
             elseif length(x) != n_obs
@@ -651,32 +651,32 @@ function bstm_Likelihood(
         IntervalCensored() 
     end
 
-    return bstm_Likelihood(
+    return TethysBayes_Likelihood(
         f_trait, param_vec, zi_trait, censor_trait,
         w_s, pzi_s, phu_s, rnb_s, sig_s, tr_s,
         cl_s, cu_s, hu_s, extra_params
     )
 end
 
-function Distributions._logpdf(d::bstm_Likelihood, y::AbstractVector{V}) where {V<:Real}
+function Distributions._logpdf(d::TethysBayes_Likelihood, y::AbstractVector{V}) where {V<:Real}
     logp = zero(V) 
     
     if d.family isa MvNormalFamily
         eta = d.param
         sig = d.sigma_y
         w = d.weight isa AbstractVector ? d.weight[1] : d.weight
-        return bstm_kernel(d.family, d.censoring_state, d.zi_state, d, eta, sig, y, 1) * w
+        return TethysBayes_kernel(d.family, d.censoring_state, d.zi_state, d, eta, sig, y, 1) * w
     elseif d.family isa Union{DirichletMultinomialFamily, MultinomialFamily, DirichletFamily}
         eta = d.param
         sig = d.sigma_y isa AbstractVector ? d.sigma_y[1] : d.sigma_y
         w = d.weight isa AbstractVector ? d.weight[1] : d.weight
-        return bstm_kernel(d.family, d.censoring_state, d.zi_state, d, eta, sig, y, 1) * w
+        return TethysBayes_kernel(d.family, d.censoring_state, d.zi_state, d, eta, sig, y, 1) * w
     else
         for i in 1:length(y)
             eta_i = d.param isa AbstractVector ? d.param[i] : d.param
             sig_i = d.sigma_y isa AbstractVector ? d.sigma_y[i] : d.sigma_y
             w_i = d.weight isa AbstractVector ? d.weight[i] : d.weight
-            k_val = bstm_kernel(d.family, d.censoring_state, d.zi_state, d, eta_i, sig_i, y[i], i)
+            k_val = TethysBayes_kernel(d.family, d.censoring_state, d.zi_state, d, eta_i, sig_i, y[i], i)
             logp += k_val * w_i
         end
         return logp
@@ -684,12 +684,12 @@ function Distributions._logpdf(d::bstm_Likelihood, y::AbstractVector{V}) where {
 end
 
 """
-    Distributions.logpdf(d::bstm_Likelihood, Y::AbstractMatrix{<:Real})
+    Distributions.logpdf(d::TethysBayes_Likelihood, Y::AbstractMatrix{<:Real})
 
 Evaluates joint log-likelihood for a batch of \$N\$ multivariate observations
 represented as rows of matrix \$Y \\in \\mathbb{R}^{N \\times K}\$.
 """
-function Distributions.logpdf(d::bstm_Likelihood, Y::AbstractMatrix{<:Real})
+function Distributions.logpdf(d::TethysBayes_Likelihood, Y::AbstractMatrix{<:Real})
     if d.family isa Union{DirichletMultinomialFamily, MultinomialFamily, DirichletFamily, MvNormalFamily}
         logp = 0.0
         N = size(Y, 1)
@@ -701,7 +701,7 @@ function Distributions.logpdf(d::bstm_Likelihood, Y::AbstractMatrix{<:Real})
                 d.sigma_y isa AbstractVector ? d.sigma_y[i] : d.sigma_y
             end
             w_i = d.weight isa AbstractVector ? d.weight[i] : d.weight
-            k_val = bstm_kernel(d.family, d.censoring_state, d.zi_state, d, eta_i, sig_i, Y[i, :], i)
+            k_val = TethysBayes_kernel(d.family, d.censoring_state, d.zi_state, d, eta_i, sig_i, Y[i, :], i)
             logp += k_val * w_i
         end
         return logp
@@ -713,7 +713,7 @@ function Distributions.logpdf(d::bstm_Likelihood, Y::AbstractMatrix{<:Real})
     end
 end
 
-function Distributions.logpdf(d::bstm_Likelihood, y::Real)
+function Distributions.logpdf(d::TethysBayes_Likelihood, y::Real)
     if d.family isa Union{DirichletMultinomialFamily, MultinomialFamily, DirichletFamily, MvNormalFamily}
         error("$(typeof(d.family)) likelihood requires a vector of observations, " *
               "but received a scalar.")
@@ -723,14 +723,14 @@ function Distributions.logpdf(d::bstm_Likelihood, y::Real)
     sig = d.sigma_y isa AbstractVector ? d.sigma_y[1] : d.sigma_y
     w = d.weight isa AbstractVector ? d.weight[1] : d.weight
     
-    return bstm_kernel(d.family, d.censoring_state, d.zi_state, d, eta, sig, y, 1) * w
+    return TethysBayes_kernel(d.family, d.censoring_state, d.zi_state, d, eta, sig, y, 1) * w
 end
 
-function Distributions.logpdf(d::bstm_Likelihood, y::AbstractVector{<:Real})
+function Distributions.logpdf(d::TethysBayes_Likelihood, y::AbstractVector{<:Real})
     return Distributions._logpdf(d, y)
 end
 
-function Base.rand(rng::Random.AbstractRNG, d::bstm_Likelihood)
+function Base.rand(rng::Random.AbstractRNG, d::TethysBayes_Likelihood)
     if d.family isa Union{DirichletMultinomialFamily, MultinomialFamily, DirichletFamily,
                           CategoricalFamily, MvNormalFamily}
         dist = get_dist_ref(d.family, d, d.param, d.sigma_y, 1)
@@ -773,9 +773,9 @@ function Base.rand(rng::Random.AbstractRNG, d::bstm_Likelihood)
     return raw_draw
 end
 
-Base.rand(d::bstm_Likelihood) = rand(Random.default_rng(), d)
+Base.rand(d::TethysBayes_Likelihood) = rand(Random.default_rng(), d)
 
-function Distributions._rand!(rng::Random.AbstractRNG, d::bstm_Likelihood, x::AbstractArray)
+function Distributions._rand!(rng::Random.AbstractRNG, d::TethysBayes_Likelihood, x::AbstractArray)
     for i in eachindex(x)
         eta_i = d.param isa AbstractVector ? d.param[i] : d.param
         sig_i = d.sigma_y isa AbstractVector ? d.sigma_y[i] : d.sigma_y
@@ -807,8 +807,8 @@ function Distributions._rand!(rng::Random.AbstractRNG, d::bstm_Likelihood, x::Ab
     return x
 end
 
-function bstm_kernel(
-    fam::AbstractBSTM_Family, ::Uncensored, zero_inflated::AbstractZIState, d, eta::V, sig, y,
+function TethysBayes_kernel(
+    fam::AbstractTethysBayes_Family, ::Uncensored, zero_inflated::AbstractZIState, d, eta::V, sig, y,
     obs_idx::Int = 1
 ) where {V<:Real}
     if isnan(eta) || isinf(eta)
@@ -850,8 +850,8 @@ function bstm_kernel(
     end
 end
 
-function bstm_kernel(
-    fam::AbstractBSTM_Family, ::LeftCensored, zero_inflated::AbstractZIState, d, eta::V, sig, y,
+function TethysBayes_kernel(
+    fam::AbstractTethysBayes_Family, ::LeftCensored, zero_inflated::AbstractZIState, d, eta::V, sig, y,
     obs_idx::Int = 1
 ) where {V<:Real}
     if isnan(eta) || isinf(eta)
@@ -859,7 +859,7 @@ function bstm_kernel(
     end
     upper_bound = V(_get_obs(d.censor_upper, obs_idx))
     if !isfinite(upper_bound)
-        return bstm_kernel(fam, Uncensored(), zero_inflated, d, eta, sig, y, obs_idx)
+        return TethysBayes_kernel(fam, Uncensored(), zero_inflated, d, eta, sig, y, obs_idx)
     end
 
     dist = get_dist_ref(fam, d, eta, sig, obs_idx)
@@ -893,8 +893,8 @@ function bstm_kernel(
     end
 end
 
-function bstm_kernel(
-    fam::AbstractBSTM_Family, ::RightCensored, zero_inflated::AbstractZIState, d, eta::V, sig, y,
+function TethysBayes_kernel(
+    fam::AbstractTethysBayes_Family, ::RightCensored, zero_inflated::AbstractZIState, d, eta::V, sig, y,
     obs_idx::Int = 1
 ) where {V<:Real}
     if isnan(eta) || isinf(eta)
@@ -902,7 +902,7 @@ function bstm_kernel(
     end
     lower_bound = V(_get_obs(d.censor_lower, obs_idx))
     if !isfinite(lower_bound)
-        return bstm_kernel(fam, Uncensored(), zero_inflated, d, eta, sig, y, obs_idx)
+        return TethysBayes_kernel(fam, Uncensored(), zero_inflated, d, eta, sig, y, obs_idx)
     end
 
     dist = get_dist_ref(fam, d, eta, sig, obs_idx)
@@ -938,8 +938,8 @@ function bstm_kernel(
     end
 end
 
-function bstm_kernel(
-    fam::AbstractBSTM_Family, ::IntervalCensored, zero_inflated::AbstractZIState, d, eta::V, sig, y,
+function TethysBayes_kernel(
+    fam::AbstractTethysBayes_Family, ::IntervalCensored, zero_inflated::AbstractZIState, d, eta::V, sig, y,
     obs_idx::Int = 1
 ) where {V<:Real}
     if isnan(eta) || isinf(eta)
@@ -949,11 +949,11 @@ function bstm_kernel(
     upper_bound = V(_get_obs(d.censor_upper, obs_idx))
 
     if !isfinite(lower_bound) && !isfinite(upper_bound)
-        return bstm_kernel(fam, Uncensored(), zero_inflated, d, eta, sig, y, obs_idx)
+        return TethysBayes_kernel(fam, Uncensored(), zero_inflated, d, eta, sig, y, obs_idx)
     elseif isfinite(lower_bound) && !isfinite(upper_bound)
-        return bstm_kernel(fam, RightCensored(), zero_inflated, d, eta, sig, y, obs_idx)
+        return TethysBayes_kernel(fam, RightCensored(), zero_inflated, d, eta, sig, y, obs_idx)
     elseif !isfinite(lower_bound) && isfinite(upper_bound)
-        return bstm_kernel(fam, LeftCensored(), zero_inflated, d, eta, sig, y, obs_idx)
+        return TethysBayes_kernel(fam, LeftCensored(), zero_inflated, d, eta, sig, y, obs_idx)
     end
 
     dist = get_dist_ref(fam, d, eta, sig, obs_idx)

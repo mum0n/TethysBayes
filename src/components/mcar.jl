@@ -48,7 +48,7 @@ where \$\\mathbf{L}_{\\text{cross}} = \\operatorname{diag}(\\boldsymbol{\\sigma}
 # Inputs
 - **Required**:
   - A spatial index variable (e.g., `s_idx`) passed to `random()`.
-  - An adjacency matrix `W` passed as a keyword argument to `@bstm`.
+  - An adjacency matrix `W` passed as a keyword argument to `@tbm`.
 - **Optional (in `random()` call)**:
   - `rho_unconstrained`: `UnivariateDistribution`, prior for unconstrained spatial mixing
     parameter \$\\rho = \\operatorname{logistic}(\\text{rho\\_unconstrained})\$. Default:
@@ -93,7 +93,7 @@ MODEL_TO_STRUCTURE_MAP[:mcar] = :spatial
 
 function get_precomputes(m::MCAR, M::NamedTuple, mod_data::Dict)::NamedTuple
     if !hasproperty(M, :W) || !isa(M.W, AbstractMatrix) || isempty(M.W)
-        error("MCAR model requires a valid, non-empty adjacency matrix `W` provided via keyword to `@bstm`.")
+        error("MCAR model requires a valid, non-empty adjacency matrix `W` provided via keyword to `@tbm`.")
     end
 
     s_N = size(M.W, 1)

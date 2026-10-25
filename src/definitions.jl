@@ -2,7 +2,7 @@
     definitions.jl
 
 Core type definitions, abstract hierarchies, registries, and interface function declarations
-for Bayesian Spatio-Temporal Models (BSTM).
+for Bayesian Spatio-Temporal Models (TethysBayes).
 
 Version: v1.0.0
 """
@@ -54,7 +54,7 @@ Determines whether a model hyperparameter or latent component is shared across
 outcomes in a multivariate model.
 
 # Mathematical & Design Logic
-In multivariate BSTM formulations with \$K\$ outcomes, parameters may either vary
+In multivariate TethysBayes formulations with \$K\$ outcomes, parameters may either vary
 independently per outcome (\$k \\in \\{1, \\dots, K\\}\$) or be shared across all
 outcomes to enforce parsimony or joint structure.
 
@@ -214,7 +214,7 @@ struct ExampleArchitecture <: AbstractModelArchitecture end
 struct UnknownArchitecture <: AbstractModelArchitecture end
 
 
-const BSTM_MODULE_KEYWORDS = Set([ 
+const TethysBayes_MODULE_KEYWORDS = Set([ 
     :intercept, :fixed, :mixed, :random, :nested, :transfer, :fidelity, :eigen,
     :dynamics, :pointprocess, :custom, :zscore, :log, :center, :scale, :sciml
 ])
@@ -479,7 +479,7 @@ cannot be used here: the interface takes five arguments, so a one-element
 `Tuple{T}` never matches a five-argument method signature.
 """
 function missing_interface_methods(@nospecialize(T::Type))
-    return [f for f in COMPONENT_INTERFACE_FUNCTIONS if !_implements_for(T, getfield(bstm, f))]
+    return [f for f in COMPONENT_INTERFACE_FUNCTIONS if !_implements_for(T, getfield(TethysBayes, f))]
 end
 
 function _implements_for(@nospecialize(T::Type), f::Function)
@@ -502,7 +502,7 @@ function validate_component_interface(@nospecialize(T::Type))
     missing = missing_interface_methods(T)
     if !isempty(missing)
         error(
-            "Component `$(T)` does not implement the bstm component interface. " *
+            "Component `$(T)` does not implement the TethysBayes component interface. " *
             "Missing: $(join(string.(missing), ", ")). " *
             "Every component must define $(join(string.(COMPONENT_INTERFACE_FUNCTIONS), ", ")).")
     end
@@ -537,11 +537,10 @@ end
 
 # The spatial/temporal coordinate-time column-name vocabulary and its two
 # resolvers (STANDARD_SPATIAL_COORDINATE_PAIRS, STANDARD_TEMPORAL_CANDIDATES,
-# _detect_xy_columns, _detect_time_column) moved to the GeoPartitioning
-# package (they were the only package-internal coupling the partitioning engine
-# had). bstm.jl imports the same names from GeoPartitioning, which keeps every
+# _detect_xy_columns, _detect_time_column) are owned by the Tethys.Partitioning
+# module. TethysBayes.jl imports these names from Tethys.Partitioning, which keeps every
 # internal call site and the module export statements working unchanged. The
-# remaining _detect_* resolvers below are bstm modelling vocabulary and stay.
+# remaining _detect_* resolvers below are TethysBayes modelling vocabulary and stay.
 
 
 """

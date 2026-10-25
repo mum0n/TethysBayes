@@ -155,7 +155,7 @@ function get_updates(
     
     common_basis_code = """
         hyper = spec_registry[:$(key)].hyper
-        B_wavelet = bstm_tensor_product_wavelet_basis(
+        B_wavelet = TethysBayes_tensor_product_wavelet_basis(
             hyper.coords,
             hyper.nbins_per_dim,
             Symbol("$(m.family)"),
@@ -276,7 +276,7 @@ function get_effects(
         for i in 1:n_samples
             # 1. Generate basis matrix on CPU
             current_ls_cpu = length_scale_dim > 1 ? ls_samples_cpu[i, :] : ls_samples_cpu[i, 1]
-            B_wavelet_i_cpu = bstm_tensor_product_wavelet_basis(
+            B_wavelet_i_cpu = TethysBayes_tensor_product_wavelet_basis(
                 coords_full_cpu, nbins_per_dim, m.family, current_ls_cpu
             )
             

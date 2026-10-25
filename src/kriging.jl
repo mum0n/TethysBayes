@@ -1,6 +1,6 @@
 
-# not central to bstm. this is here for some simple comparisons
-# to use it, you must read it in manually: include( "c:/home/jae/projects/bstm/src/kriging.jl" )
+# not central to TethysBayes. this is here for some simple comparisons
+# to use it, you must read it in manually: include( "c:/home/jae/projects/TethysBayes/src/kriging.jl" )
 
 if false 
     import Pkg

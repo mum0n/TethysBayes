@@ -1,8 +1,8 @@
 # ==============================================================================
-# BSTM Test Suite: Modular DAG Pipeline Orchestrator & Multi-Tier Resharding
+# TethysBayes Test Suite: Modular DAG Pipeline Orchestrator & Multi-Tier Resharding
 # ==============================================================================
 
-if !@isdefined(bstm_Likelihood)
+if !@isdefined(TethysBayes_Likelihood)
     include(joinpath(@__DIR__, "test_helpers.jl"))
 end
 
@@ -84,7 +84,7 @@ end
         df_bio = DataFrame(s_idx = s_idx_bio, s_x = x, s_y = y, catch_val = catch_obs)
 
         # Run declarative pipeline
-        pipe_res = bstm_pipeline(
+        pipe_res = TethysBayes_pipeline(
             :depth => (
                 formula = "likelihood(depth) ~ intercept() + random(s_x, s_y, model=rff, n_features=15)",
                 data = df_bathy,

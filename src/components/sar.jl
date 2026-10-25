@@ -37,7 +37,7 @@ its spectral decomposition.
 # Inputs
 - **Required**:
   - A spatial index variable (e.g., `region`) passed to `random()`.
-  - An adjacency matrix `W` passed as a keyword argument to `@bstm`.
+  - An adjacency matrix `W` passed as a keyword argument to `@tbm`.
 - **Optional (in `random()` call)**:
   - `rho`: `UnivariateDistribution`, prior for the spatial autoregressive parameter.
     Default: `Normal(0, 0.5)`. Should be constrained to ensure stationarity.

@@ -67,8 +67,8 @@ on cumulative migration distance.
 # Inputs
 - **Required**:
   - A spatial index variable (e.g. `region`, `s_idx`) passed to `random()`.
-  - An adjacency matrix `W` passed as a keyword argument to `@bstm(..., W=W)`.
-  - Cell centroids passed as `@bstm(..., centroids=centroids)`.
+  - An adjacency matrix `W` passed as a keyword argument to `@tbm(..., W=W)`.
+  - Cell centroids passed as `@tbm(..., centroids=centroids)`.
   - `habitat`: A `Symbol` pointing to a column in the data, or a `Vector` of length `s_N`.
 - **Optional (in `random()` call)**:
   - `habitat_se`: `Symbol`, `Vector`, or `Real`, standard error on HSI.
@@ -641,7 +641,7 @@ end
         seed::Union{Int, Nothing} = nothing
     ) -> StochasticAStarResult
 
-Extracts or computes stochastic A* least-cost path inference from a fitted BSTM model
+Extracts or computes stochastic A* least-cost path inference from a fitted TethysBayes model
 containing an `AStar` component.
 """
 function get_astar_paths(model_result; key::Symbol = :astar)

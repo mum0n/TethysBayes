@@ -41,7 +41,7 @@ is not constant but varies by spatial cluster, while the precision matrix,
 # Inputs
 - **Required**:
   - A spatial index variable (e.g., `region`) passed to `random()`.
-  - An adjacency matrix `W` passed as a keyword argument to `@bstm`.
+  - An adjacency matrix `W` passed as a keyword argument to `@tbm`.
   - Spatial coordinates (`s_x`, `s_y`) in the data frame for clustering.
 - **Optional (in `random()` call)**:
   - `n_clusters`: `Int`, the number of spatial clusters to identify. Default: `5`.

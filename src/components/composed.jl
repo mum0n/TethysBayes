@@ -389,7 +389,7 @@ function get_effects(
                 coords_pred = Matrix{Float64}(PS.data[!,
                     Symbol.(coord_vars)]) # Extract prediction coordinates
                 dynamic_comp_obj = dynamic_spec.component_obj
-                B_pred, _ = bstm_bspline_basis(
+                B_pred, _ = TethysBayes_bspline_basis(
                     coords_pred[:, 1], dynamic_comp_obj.nbins, dynamic_comp_obj.degree
                 )
                 vcat(B_dynamic_train, B_pred)

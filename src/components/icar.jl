@@ -35,7 +35,7 @@ from the global intercept.
 # Inputs
 - **Required**:
   - A spatial index variable (e.g., `s_idx`) passed to `random()`.
-  - An adjacency matrix `W` passed as a keyword argument to `@bstm`.
+  - An adjacency matrix `W` passed as a keyword argument to `@tbm`.
 - **Optional (in `random()` call)**:
   - `sigma`: `UnivariateDistribution`, prior for the standard deviation of the
     ICAR effect. Default: `Exponential(1.0)`.

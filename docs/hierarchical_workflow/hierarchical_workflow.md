@@ -1,7 +1,7 @@
 ---
-title: "Unified Hierarchical Bayesian Workflows: Multi-Tier DAGs, Surface Derivatives, EIV Priors, Habitat Suitability & ADR Telemetry in BSTM"
+title: "Unified Hierarchical Bayesian Workflows: Multi-Tier DAGs, Surface Derivatives, EIV Priors, Habitat Suitability & ADR Telemetry in TethysBayes"
 subtitle: "Standard & Advanced Modes — Tempered Power Posteriors, Full Spatial Covariance EIV, Hybrid Quadrature Resharding, Continuous Physiological HSI, and Coupled Hydrodynamic-Active Advection"
-author: "BSTM Development Group"
+author: "TethysBayes Development Group"
 date: "2026-08-24"
 format:
   html:
@@ -30,7 +30,7 @@ processes inside a single monolithic joint likelihood, modern Bayesian computati
 **Modular Bayesian Inference (Cut-Posterior DAG Pipelines)** [@Plummer_2015; @Jacob_2017;
 @Hooten_Hefley_2019].
 
-The **Bayesian Spatio-Temporal Models (`bstm`)** ecosystem establishes a unified, principled
+The **Bayesian Spatio-Temporal Models (`TethysBayes`)** ecosystem establishes a unified, principled
 framework connecting:
 
 1. **Continuous Surface Modeling & Differential Geometry**: Analytical derivation of slopes,
@@ -136,7 +136,7 @@ $$
 
 ### 2.2. Continuous Surface Derivatives & Topographic Differential Geometry
 
-For any continuous surface model $z(\mathbf{s}) = \mathbf{B}(\mathbf{s}) \mathbf{c}$, `bstm`
+For any continuous surface model $z(\mathbf{s}) = \mathbf{B}(\mathbf{s}) \mathbf{c}$, `TethysBayes`
 computes exact spatial derivatives without numerical finite-difference grid artifacts:
 
 1. **Gradient & Seabed Slope**:
@@ -187,7 +187,7 @@ computes exact spatial derivatives without numerical finite-difference grid arti
 
 When downstream models ingest predictions $\hat{x}_i$ with standard errors $\sigma_{x, i}$ from
 upstream tiers, naive point substitution induces **attenuation bias** (underestimating effect sizes).
-`bstm` implements latent Gaussian measurement error priors:
+`TethysBayes` implements latent Gaussian measurement error priors:
 
 $$
 x_i \sim \mathcal{N}(\mu_{x, i}, \sigma^2_{x, i}), \quad \eta_i = \beta_0 + \beta_1 x_i + \dots
@@ -569,7 +569,7 @@ restart plans:
 
 ```
 ===================================================================================================
-BSTM HIERARCHICAL WORKFLOW: SEGMENT STATUS & RESTART RECOMMENDATIONS
+TethysBayes HIERARCHICAL WORKFLOW: SEGMENT STATUS & RESTART RECOMMENDATIONS
 ===================================================================================================
 Tier / Segment               Update Schedule      Status     Last Run (UTC)         Action
 ---------------------------------------------------------------------------------------------------
@@ -668,8 +668,8 @@ julia --project=. docs/hierarchical_workflow/hierarchical_workflow.jl --clean
 
 #### Step 0: Multi-Tier Ecosystem & Telemetry Data Generation
 
-Generates synthetic multi-scale datasets via `bstm_data(type="hierarchical")` and
-`bstm_data(type="telemetry")`:
+Generates synthetic multi-scale datasets via `TethysBayes_data(type="hierarchical")` and
+`TethysBayes_data(type="telemetry")`:
 
 - **Bathymetry**: $N = 1,000$ continuous soundings.
 - **Substrate**: $N = 500$ sediment grab stations.
@@ -694,11 +694,11 @@ Fits a continuous Random Fourier Features (RFF) GP and evaluates analytical deri
 quadrature nodes, bypassing piecewise-constant approximation error:
 
 ```julia
-m_depth = @bstm(likelihood(depth, family=gaussian) ~ intercept() + random(s_x, s_y, model=rff), df_bathy)
+m_depth = @tbm(likelihood(depth, family=gaussian) ~ intercept() + random(s_x, s_y, model=rff), df_bathy)
 chn_depth = sample(m_depth, NUTS(40, 0.65), 80; progress=false)
 
 # Analytical slopes, curvatures, and circular BPI on master network
-pred_depth_master = bstm_surface_derivatives(
+pred_depth_master = TethysBayes_surface_derivatives(
     m_depth, chn_depth,
     DataFrame(s_x=[c[1] for c in au_master.centroids], s_y=[c[2] for c in au_master.centroids]);
     metrics = [:slope, :curvature, :bpi], radii = [10.0, 25.0]
@@ -712,7 +712,7 @@ priors (`run_tier2_substrate`). Standard: diagonal EIV. Advanced: full empirical
 covariance $\boldsymbol{\Sigma}_{\mathbf{x}}$:
 
 ```julia
-m_sub = @bstm(
+m_sub = @tbm(
     likelihood(grain_size_phi, family=gaussian) ~
         intercept() +
         fixed(depth_mu, error_sd=:depth_sd) +
@@ -732,7 +732,7 @@ space-time GMRF (`run_tier3_temperature`). Standard: strict cut-posterior. Advan
 power posterior ($\lambda = 0.25$):
 
 ```julia
-m_temp = @bstm(
+m_temp = @tbm(
     likelihood(bottom_temperature, family=gaussian) ~
         intercept() +
         fixed(depth_mu, error_sd=:depth_sd) +
@@ -750,7 +750,7 @@ threshold Bernoulli. Advanced: continuous soft-sigmoid Beta GMRF:
 
 ```julia
 # Standard:
-m_hsi = @bstm(
+m_hsi = @tbm(
     likelihood(habitat_suitable, family=bernoulli) ~
         intercept() +
         fixed(depth_mu, error_sd=:depth_sd) +
@@ -761,7 +761,7 @@ m_hsi = @bstm(
 )
 
 # Advanced (soft_sigmoid, HSI ∈ (0,1), Beta family):
-m_hsi = @bstm(
+m_hsi = @tbm(
     likelihood(HSI_target, family=beta) ~
         intercept() +
         fixed(depth_mu, error_sd=:depth_sd) +
@@ -778,7 +778,7 @@ Integrates all upstream resharded environmental predictors, community gradients,
 the final biomass assessment model (`run_tier5_biomass`):
 
 ```julia
-m_crab = @bstm(
+m_crab = @tbm(
     likelihood(total_biomass_kg, family=gamma, log_offsets=log_effort) ~
         intercept() +
         fixed(hsi_mu, error_sd=:hsi_sd) +
@@ -844,15 +844,15 @@ df_critical_habitat = query_duckdb(db_path, """
 
 | Function | Module | Description |
 | :--- | :--- | :--- |
-| `bstm_data` | `src/data.jl` | Generates synthetic multi-tier hierarchical marine ecosystem datasets. |
+| `TethysBayes_data` | `src/data.jl` | Generates synthetic multi-tier hierarchical marine ecosystem datasets. |
 | `compute_data_traits` | `src/hierarchical.jl` | Computes statistical trait fingerprints (dimensions, bounds, hash) for datasets. |
 | `init_pipeline_manifest!` | `src/hierarchical.jl` | Creates and initializes the `pipeline_manifest` DuckDB table. |
 | `check_pipeline_status` | `src/hierarchical.jl` | Evaluates DAG dependencies and hashes to recommend segment restart actions. |
 | `is_tier_up_to_date` | `src/hierarchical.jl` | Validates if a tier's serialized model and DuckDB results are valid and current. |
 | `write_tier_table!` / `read_tier_table` | `src/hierarchical.jl` | High-speed relational table reading and writing in DuckDB. |
 | `map_to_units` | `src/hierarchical.jl` | Fast Euclidean mapping of point coordinates to discrete polygon unit centroids. |
-| `bstm_pipeline` | `src/pipeline.jl` | Declarative multi-tier DAG pipeline orchestrator. |
-| `bstm_surface_derivatives` | `src/derivatives.jl` | Computes continuous surface derivatives ($\nabla z, \nabla^2 z$, slope, curvature, BPI). |
+| `TethysBayes_pipeline` | `src/pipeline.jl` | Declarative multi-tier DAG pipeline orchestrator. |
+| `TethysBayes_surface_derivatives` | `src/derivatives.jl` | Computes continuous surface derivatives ($\nabla z, \nabla^2 z$, slope, curvature, BPI). |
 | `compute_network_transfer_matrix` | `src/pipeline.jl` | Constructs linear transfer matrix $\mathbf{P}$ between mismatched meshes. |
 | `reshard_spatial_field` | `src/pipeline.jl` | Reshards posterior moments or sample matrices ($U_{\text{dest}} = P U_{\text{src}}$). |
 | `summarize_sample_matrix` | `src/pipeline.jl` | Evaluates empirical quantiles and credible intervals from sample matrices. |
@@ -860,7 +860,7 @@ df_critical_habitat = query_duckdb(db_path, """
 | `compute_suitability_transition_kernel` | `src/movement.jl` | Computes Markov transition kernel $\mathbf{\Gamma}$ from HSI and graph $W$. |
 | `simulate_posterior_trajectories` | `src/movement.jl` | Simulates individual paths with directional persistence (Correlated Random Walk). |
 | `calculate_regional_connectivity` | `src/movement.jl` | Aggregates fine-scale transitions into macro-regional migration matrices. |
-| `save_bstm_bundle` | `src/input_output.jl` | Serializes models (.jld2) and normalized results tables (.duckdb). |
+| `save_TethysBayes_bundle` | `src/input_output.jl` | Serializes models (.jld2) and normalized results tables (.duckdb). |
 | `query_duckdb` | `src/input_output.jl` | Executes high-performance out-of-core SQL queries directly against DuckDB tables. |
 | `export_spatial_results_to_geojson` | `src/input_output.jl` | Exports spatial polygon geometries and predictions to standard RFC 7946 GeoJSON. |
 

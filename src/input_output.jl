@@ -2,7 +2,7 @@
     input_output.jl
 
 Serialization, analytical persistence (JLD2 and DuckDB), GIS export, and model ensembling
-for Bayesian Spatio-Temporal Models (BSTM).
+for Bayesian Spatio-Temporal Models (TethysBayes).
 
 Version: v1.0.0
 """
@@ -167,29 +167,29 @@ end
 # ==============================================================================
 
 """
-    BSTM_SCHEMA_VERSION
+    TethysBayes_SCHEMA_VERSION
 
-Version of the on-disk bundle layout written by [`save_bstm_model`](@ref).
+Version of the on-disk bundle layout written by [`save_TethysBayes_model`](@ref).
 
 This is deliberately separate from the package version. It changes only when the shape
-of a saved bundle changes, so a reader can tell "written by an older bstm" (same layout,
-possibly missing fields) from "written by a newer bstm whose layout I do not understand".
+of a saved bundle changes, so a reader can tell "written by an older TethysBayes" (same layout,
+possibly missing fields) from "written by a newer TethysBayes whose layout I do not understand".
 
-A bundle records the version that wrote it; [`load_bstm_model`](@ref) refuses a bundle
+A bundle records the version that wrote it; [`load_TethysBayes_model`](@ref) refuses a bundle
 newer than this, and accepts an older one with a warning, rather than failing later with
 an unrelated error about a missing field.
 """
-const BSTM_SCHEMA_VERSION = 2
+const TethysBayes_SCHEMA_VERSION = 2
 
 """
-    save_bstm_model(filepath::AbstractString, model::DynamicPPL.Model; 
+    save_TethysBayes_model(filepath::AbstractString, model::DynamicPPL.Model; 
                     chain=nothing, au=nothing, metadata::Dict=Dict(), compress::Bool=true)
 
-Saves the complete state of a `bstm` model `m` and optional posterior `chain` to a JLD2 file.
+Saves the complete state of a `TethysBayes` model `m` and optional posterior `chain` to a JLD2 file.
 
 # Arguments
-- `filepath::AbstractString`: Path to output file (should end with `.jld2` or `.bstm`).
-- `model::DynamicPPL.Model`: Instantiated `bstm` Turing model.
+- `filepath::AbstractString`: Path to output file (should end with `.jld2` or `.TethysBayes`).
+- `model::DynamicPPL.Model`: Instantiated `TethysBayes` Turing model.
 - `chain`: (Optional) MCMC chain object (`FlexiChain` or `MCMCChains.Chains`).
 - `au`: (Optional) Areal units NamedTuple from `assign_spatial_units`.
 - `metadata::Dict`: (Optional) User-defined metadata dictionary (e.g. project name, notes, author).
@@ -197,10 +197,10 @@ Saves the complete state of a `bstm` model `m` and optional posterior `chain` to
 
 # Example
 ```julia
-save_bstm_model("output/my_model.jld2", m; chain=chn, au=st_data.au_spatial)
+save_TethysBayes_model("output/my_model.jld2", m; chain=chn, au=st_data.au_spatial)
 ```
 """
-function save_bstm_model(
+function save_TethysBayes_model(
     filepath::AbstractString, 
     model::DynamicPPL.Model; 
     chain=nothing, 
@@ -214,7 +214,7 @@ function save_bstm_model(
         mkpath(dir)
     end
 
-    if !endswith(filepath, ".jld2") && !endswith(filepath, ".bstm")
+    if !endswith(filepath, ".jld2") && !endswith(filepath, ".TethysBayes")
         filepath = filepath * ".jld2"
     end
 
@@ -224,7 +224,7 @@ function save_bstm_model(
     # Package clean serializable configuration without redundant handles
     meta_info = merge(Dict(
         "created_at" => string(now()),
-        "schema_version" => BSTM_SCHEMA_VERSION,
+        "schema_version" => TethysBayes_SCHEMA_VERSION,
         "formula" => string(get(M, :formula, "")),
         "model_arch" => string(get(M, :model_arch, "univariate")),
         "family" => string(get(M, :family, :gaussian)),
@@ -271,18 +271,18 @@ function save_bstm_model(
         spec_registry = clean_spec_reg,
         chain = chain,
         au = au,
-        schema_version = BSTM_SCHEMA_VERSION,
+        schema_version = TethysBayes_SCHEMA_VERSION,
         metadata = meta_info
     )
 
-    @info "BSTM model successfully saved to '$filepath' (schema v$BSTM_SCHEMA_VERSION)."
+    @info "TethysBayes model successfully saved to '$filepath' (schema v$TethysBayes_SCHEMA_VERSION)."
     return filepath
 end
 
 """
-    load_bstm_model(filepath::AbstractString; calling_module::Module=Main)
+    load_TethysBayes_model(filepath::AbstractString; calling_module::Module=Main)
 
-Loads a saved `bstm` model from a JLD2 file and re-instantiates a live, callable
+Loads a saved `TethysBayes` model from a JLD2 file and re-instantiates a live, callable
 Turing `@model` object ready for sampling, prediction, or diagnostic post-processing.
 
 # Returns
@@ -294,17 +294,17 @@ A `NamedTuple` containing:
 
 # Example
 ```julia
-bundle = load_bstm_model("output/my_model.jld2")
+bundle = load_TethysBayes_model("output/my_model.jld2")
 m = bundle.model
 chn = bundle.chain
 ```
 """
-function load_bstm_model(filepath::AbstractString; calling_module::Module=Main)
+function load_TethysBayes_model(filepath::AbstractString; calling_module::Module=Main)
     if !isfile(filepath)
         if isfile(filepath * ".jld2")
             filepath = filepath * ".jld2"
         else
-            error("BSTM model file not found: '$filepath'")
+            error("TethysBayes model file not found: '$filepath'")
         end
     end
 
@@ -321,19 +321,19 @@ function load_bstm_model(filepath::AbstractString; calling_module::Module=Main)
         Int(get(meta, "schema_version", 1))
     close(f)
 
-    if schema > BSTM_SCHEMA_VERSION
+    if schema > TethysBayes_SCHEMA_VERSION
         error(
-            "'$filepath' was written with bstm bundle schema v$schema, but this version " *
-            "of bstm only understands up to v$BSTM_SCHEMA_VERSION. Upgrade bstm to read it.")
-    elseif schema < BSTM_SCHEMA_VERSION
-        @warn "Bundle '$filepath' uses schema v$schema, older than the current v$BSTM_SCHEMA_VERSION. Loading may lose fields added since."
+            "'$filepath' was written with TethysBayes bundle schema v$schema, but this version " *
+            "of TethysBayes only understands up to v$TethysBayes_SCHEMA_VERSION. Upgrade TethysBayes to read it.")
+    elseif schema < TethysBayes_SCHEMA_VERSION
+        @warn "Bundle '$filepath' uses schema v$schema, older than the current v$TethysBayes_SCHEMA_VERSION. Loading may lose fields added since."
     end
     dropped = get(meta, "dropped_spec_registry_keys", "")
     if !isempty(dropped)
         @warn "Bundle '$filepath' omits non-serializable spec_registry entries: $dropped"
     end
 
-    # Re-instantiate the live Turing Model using bstm_core
+    # Re-instantiate the live Turing Model using TethysBayes_core
     kwargs = Dict{Symbol, Any}()
     if !isnothing(W_mat)
         kwargs[:W] = W_mat
@@ -344,9 +344,9 @@ function load_bstm_model(filepath::AbstractString; calling_module::Module=Main)
     kwargs[:verbose] = false
 
     # Reconstruct live model
-    live_model = bstm_core(formula_str, data_df, calling_module; kwargs...)
+    live_model = TethysBayes_core(formula_str, data_df, calling_module; kwargs...)
 
-    @info "BSTM model successfully loaded and instantiated from '$filepath' (schema v$schema)."
+    @info "TethysBayes model successfully loaded and instantiated from '$filepath' (schema v$schema)."
     return (
         model = live_model,
         chain = chain,
@@ -360,7 +360,7 @@ end
 # ==============================================================================
 
 """
-    save_bstm_results(duckdb_path::AbstractString, res::NamedTuple; 
+    save_TethysBayes_results(duckdb_path::AbstractString, res::NamedTuple; 
                       model=nothing, chain=nothing, au=nothing,
                       table_prefix::String="", overwrite::Bool=true)
 
@@ -378,10 +378,10 @@ Stores normalized relational tables:
 
 # Example
 ```julia
-save_bstm_results("output/results.duckdb", res; model=m, chain=chn, au=data.au)
+save_TethysBayes_results("output/results.duckdb", res; model=m, chain=chn, au=data.au)
 ```
 """
-function save_bstm_results(
+function save_TethysBayes_results(
     duckdb_path::AbstractString, 
     res::NamedTuple; 
     model=nothing, 
@@ -415,7 +415,7 @@ function save_bstm_results(
           "unknown"
         
         df_meta = DataFrame(
-            property = ["saved_at", "formula", "family", "bstm_version"],
+            property = ["saved_at", "formula", "family", "TethysBayes_version"],
             value = [string(now()), formula_str, family_str, "1.0.0"]
         )
         _write_df_to_duckdb(con, df_meta, "$(pfx)model_metadata", overwrite)
@@ -545,17 +545,17 @@ function save_bstm_results(
         DuckDB.close(db)
     end
 
-    @info "BSTM analytical results successfully saved to DuckDB database '$duckdb_path'."
+    @info "TethysBayes analytical results successfully saved to DuckDB database '$duckdb_path'."
     return duckdb_path
 end
 
 """
-    load_bstm_results(duckdb_path::AbstractString; table_prefix::String="")::NamedTuple
+    load_TethysBayes_results(duckdb_path::AbstractString; table_prefix::String="")::NamedTuple
 
 Loads previously saved model results from a DuckDB database into a structured NamedTuple
 matching `model_results_comprehensive`.
 """
-function load_bstm_results(duckdb_path::AbstractString; table_prefix::String="")::NamedTuple
+function load_TethysBayes_results(duckdb_path::AbstractString; table_prefix::String="")::NamedTuple
     if !isfile(duckdb_path)
         if isfile(duckdb_path * ".duckdb")
             duckdb_path = duckdb_path * ".duckdb"
@@ -653,13 +653,13 @@ end
 """
     query_duckdb(duckdb_path::AbstractString, sql_query::AbstractString)::DataFrame
 
-Executes an arbitrary SQL query against a BSTM DuckDB database
+Executes an arbitrary SQL query against a TethysBayes DuckDB database
 and returns the result as a DataFrame.
 
 # Example
 ```julia
 df_high_risk = query_duckdb("output/results.duckdb", 
-    "SELECT * FROM bstm_plot_data_latent_field_spatial WHERE latent_field_mean > 1.5 ORDER BY latent_field_mean DESC")
+    "SELECT * FROM TethysBayes_plot_data_latent_field_spatial WHERE latent_field_mean > 1.5 ORDER BY latent_field_mean DESC")
 ```
 """
 function query_duckdb(duckdb_path::AbstractString, sql_query::AbstractString)::DataFrame
@@ -833,7 +833,7 @@ end
 
 Extracts posterior distributions from previous model runs (`res` or a DuckDB database)
 and constructs fitted prior distributions (`Normal(mean, std)` or `truncated(Normal(...))`)
-ready for sequential Bayesian updating in subsequent `bstm` models.
+ready for sequential Bayesian updating in subsequent `TethysBayes` models.
 
 # Example
 ```julia
@@ -841,7 +841,7 @@ ready for sequential Bayesian updating in subsequent `bstm` models.
 priors = extract_posterior_priors("stage1_results.duckdb")
 
 # Use as informative priors in stage-2 model
-m2 = @bstm(
+m2 = @tbm(
     likelihood(y) ~ intercept(prior=priors[:intercept]) +
                     fixed(elev, prior=priors[:beta_elev]),
     df2
@@ -925,7 +925,7 @@ function save_model_ensemble(
         c_obj = hasproperty(bundle, :chain) ? bundle.chain : nothing
         r_obj = hasproperty(bundle, :results) ? bundle.results : bundle
 
-        save_bstm_results(duckdb_path, r_obj; model=m_obj, chain=c_obj, table_prefix=pfx,
+        save_TethysBayes_results(duckdb_path, r_obj; model=m_obj, chain=c_obj, table_prefix=pfx,
           overwrite=overwrite)
 
         w_val = hasproperty(r_obj.metrics, :waic) ? Float64(r_obj.metrics.waic) : NaN
@@ -1134,7 +1134,7 @@ end
 
 """
     export_posterior_samples_to_duckdb(duckdb_path::AbstractString, chain, model=nothing;
-                                       table_name::String="bstm_posterior_samples", 
+                                       table_name::String="TethysBayes_posterior_samples", 
                                        format::Symbol=:tidy, overwrite::Bool=true)
 
 Exports raw MCMC posterior draws into DuckDB for high-performance SQL querying.
@@ -1143,7 +1143,7 @@ function export_posterior_samples_to_duckdb(
     duckdb_path::AbstractString, 
     chain, 
     model=nothing;
-    table_name::String="bstm_posterior_samples", 
+    table_name::String="TethysBayes_posterior_samples", 
     format::Symbol=:tidy, 
     overwrite::Bool=true
 )
@@ -1211,13 +1211,13 @@ end
 
 """
     import_posterior_samples_from_duckdb(duckdb_path::AbstractString; 
-                                         table_name::String="bstm_posterior_samples")::DataFrame
+                                         table_name::String="TethysBayes_posterior_samples")::DataFrame
 
 Reads posterior samples stored in DuckDB into a DataFrame.
 """
 function import_posterior_samples_from_duckdb(
     duckdb_path::AbstractString; 
-    table_name::String="bstm_posterior_samples"
+    table_name::String="TethysBayes_posterior_samples"
 )::DataFrame
     return query_duckdb(duckdb_path, "SELECT * FROM $(table_name)")
 end
@@ -1275,14 +1275,14 @@ end
 # ==============================================================================
 
 """
-    save_bstm_bundle(base_path::AbstractString, model::DynamicPPL.Model, chain, res::NamedTuple; 
+    save_TethysBayes_bundle(base_path::AbstractString, model::DynamicPPL.Model, chain, res::NamedTuple; 
                      au=nothing, metadata::Dict=Dict(), compress::Bool=true)
 
 Unified one-line persister saving:
 1. `<base_path>.jld2`: Live Turing Model state `m`, `M`, and posterior `chain`.
 2. `<base_path>.duckdb`: Relational analytical database containing `res`, metrics, and plot tables.
 """
-function save_bstm_bundle(
+function save_TethysBayes_bundle(
     base_path::AbstractString, 
     model::DynamicPPL.Model, 
     chain, 
@@ -1291,29 +1291,29 @@ function save_bstm_bundle(
     metadata::Dict=Dict(), 
     compress::Bool=true
 )
-    clean_base = replace(base_path, r"\.(jld2|duckdb|db|bstm)$" => "")
+    clean_base = replace(base_path, r"\.(jld2|duckdb|db|TethysBayes)$" => "")
     jld2_file = clean_base * ".jld2"
     duckdb_file = clean_base * ".duckdb"
 
-    save_bstm_model(jld2_file, model; chain=chain, au=au, metadata=metadata, compress=compress)
-    save_bstm_results(duckdb_file, res; model=model, chain=chain, au=au, overwrite=true)
+    save_TethysBayes_model(jld2_file, model; chain=chain, au=au, metadata=metadata, compress=compress)
+    save_TethysBayes_results(duckdb_file, res; model=model, chain=chain, au=au, overwrite=true)
 
-    @info "Complete BSTM bundle saved to:\n  - Model:   '$jld2_file'\n  - Results: '$duckdb_file'"
+    @info "Complete TethysBayes bundle saved to:\n  - Model:   '$jld2_file'\n  - Results: '$duckdb_file'"
     return (model_file = jld2_file, results_file = duckdb_file)
 end
 
 """
-    load_bstm_bundle(base_path::AbstractString; calling_module::Module=Main)
+    load_TethysBayes_bundle(base_path::AbstractString; calling_module::Module=Main)
 
-Loads a complete BSTM model bundle (`<base_path>.jld2` and `<base_path>.duckdb`).
+Loads a complete TethysBayes model bundle (`<base_path>.jld2` and `<base_path>.duckdb`).
 """
-function load_bstm_bundle(base_path::AbstractString; calling_module::Module=Main)
-    clean_base = replace(base_path, r"\.(jld2|duckdb|db|bstm)$" => "")
+function load_TethysBayes_bundle(base_path::AbstractString; calling_module::Module=Main)
+    clean_base = replace(base_path, r"\.(jld2|duckdb|db|TethysBayes)$" => "")
     jld2_file = clean_base * ".jld2"
     duckdb_file = clean_base * ".duckdb"
 
-    m_data = load_bstm_model(jld2_file; calling_module=calling_module)
-    res_data = isfile(duckdb_file) ? load_bstm_results(duckdb_file) : (;)
+    m_data = load_TethysBayes_model(jld2_file; calling_module=calling_module)
+    res_data = isfile(duckdb_file) ? load_TethysBayes_results(duckdb_file) : (;)
 
     return (
         model = m_data.model,
@@ -1442,7 +1442,7 @@ and the conditioned posterior realizations \$\\boldsymbol{\\theta}^{(s)} \\sim \
 enabling direct prior-vs-posterior shrinkage and update diagnostics.
 
 # Arguments
-- `bundle`: A bundle NamedTuple returned by `save_bstm_bundle` or `load_bstm_bundle`,
+- `bundle`: A bundle NamedTuple returned by `save_TethysBayes_bundle` or `load_TethysBayes_bundle`,
   a filepath string pointing to a saved `.jld2` or `.duckdb` bundle, or a model results NamedTuple.
 - `n_prior`: Number of prior samples to generate if prior draws were not pre-saved (default: 1000).
 - `seed`: Random seed for prior sampling reproducibility (default: 42).
@@ -1468,7 +1468,7 @@ function extract_prior_posterior(
     metadata = Dict{String, Any}()
 
     if bundle isa AbstractString
-        loaded = load_bstm_bundle(bundle; calling_module=calling_module)
+        loaded = load_TethysBayes_bundle(bundle; calling_module=calling_module)
         model = loaded.model
         post_chain = loaded.chain
         au = loaded.au
@@ -1478,7 +1478,7 @@ function extract_prior_posterior(
             post_params = loaded.results.parameters
         end
     elseif bundle isa NamedTuple && haskey(bundle, :model_file)
-        loaded = load_bstm_bundle(bundle.model_file; calling_module=calling_module)
+        loaded = load_TethysBayes_bundle(bundle.model_file; calling_module=calling_module)
         model = loaded.model
         post_chain = loaded.chain
         au = loaded.au
@@ -1505,7 +1505,7 @@ function extract_prior_posterior(
         post_params = bundle.parameters
         au = get(bundle, :au, nothing)
     else
-        error("Unrecognized bundle format passed to extract_prior_posterior. Expected filepath, NamedTuple from save_bstm_bundle, or model results.")
+        error("Unrecognized bundle format passed to extract_prior_posterior. Expected filepath, NamedTuple from save_TethysBayes_bundle, or model results.")
     end
 
     if isnothing(model)

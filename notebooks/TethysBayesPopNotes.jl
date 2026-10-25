@@ -19,25 +19,35 @@ end
 begin
     using Pkg
     Pkg.activate(@__DIR__)
-    using bstm
+    using TethysBayes
     using Plots
     using CodeTracking
     default(size=(700,400))
-    include(normpath(joinpath(@__DIR__, "..", "..", "AssessmentTools", "src", "delay_difference.jl")))
-    "bstm + AssessmentTools delay_difference loaded."
+    include(normpath(joinpath(@__DIR__, "..", "..", "TethysPop", "src", "delay_difference.jl")))
+    "TethysBayes + TethysPop delay_difference loaded."
 end
 
 # ╔═╡ 10000000-0000-0000-0000-000000000002
 md"""
 # Deriso-Schnute delay-difference fishery model
 
-This notebook demonstrates the delay-difference model using both `AssessmentTools.jl`
-(functions included above) and an equivalent implementation built on `bstm`/`Turing`.
+This notebook demonstrates the delay-difference model using both `TethysPop.jl`
+(functions included above) and an equivalent implementation built on `TethysBayes`/`Turing`.
+
+> ⚠️ **WARNING: STORE OVERWRITE HAZARD**
+>
+> Executing MCMC sampling runs manually will trigger intensive estimation and
+> overwrite cached model state and workspace store objects.
+> By default, `run_model = false` to prevent inadvertent execution upon loading.
+> Toggle `run_model = true` only when an explicit manual re-fit and store overwrite is intended.
 """
+
+# ╔═╡ 10000000-0000-0000-0000-000000000020
+run_model = false
 
 # ╔═╡ 10000000-0000-0000-0000-000000000003
 md"""
-## 1. Forward simulation (`AssessmentTools`)
+## 1. Forward simulation (`TethysPop`)
 """
 
 # ╔═╡ 10000000-0000-0000-0000-000000000004
@@ -57,7 +67,7 @@ end
 
 # ╔═╡ 10000000-0000-0000-0000-000000000005
 md"""
-## 2. Bayesian inference (`AssessmentTools`)
+## 2. Bayesian inference (`TethysPop`)
 """
 
 # ╔═╡ 10000000-0000-0000-0000-000000000006
@@ -65,20 +75,24 @@ begin
     obs_survey = res.biomass .* (1.0 .+ 0.15 .* randn(rng, 25))
     model_at = bayesian_delay_difference_model(catches, recruits, obs_survey, cfg;
         obs_cv=0.20, prior_b0_mu=80.0, prior_b0_sd=15.0)
-    "AssessmentTools model constructed (sampling disabled in notebook due to duplicate variable names in source)."
+    "TethysPop model constructed (sampling disabled in notebook due to duplicate variable names in source)."
 end
 
 # ╔═╡ 10000000-0000-0000-0000-000000000007
 md"""
-## 3. Equivalent implementation on `bstm`
+## 3. Equivalent implementation on `TethysBayes`
 """
 
 # ╔═╡ 10000000-0000-0000-0000-000000000008
 begin
-    model_bstm = bayesian_delay_difference_model(catches, recruits, obs_survey, cfg;
+    model_TethysBayes = bayesian_delay_difference_model(catches, recruits, obs_survey, cfg;
         obs_cv=0.20, prior_b0_mu=80.0, prior_b0_sd=15.0)
-    chain_bstm = sample(model_bstm, NUTS(0.65), 200; progress=false, check_model=false)
-    chain_bstm
+    chain_TethysBayes = if run_model
+        sample(model_TethysBayes, NUTS(0.65), 200; progress=false, check_model=false)
+    else
+        "Sampling skipped (run_model = false). Set run_model = true to fit model."
+    end
+    chain_TethysBayes
 end
 
 # ╔═╡ 10000000-0000-0000-0000-000000000009
@@ -88,43 +102,51 @@ md"""
 
 # ╔═╡ 40000000-0000-0000-0000-000000000001
 md"""
-## 5. Hybrid: AssessmentTools model + bstm sampling/posterior handling
+## 5. Hybrid: TethysPop model + TethysBayes sampling/posterior handling
 """
 
 # ╔═╡ 40000000-0000-0000-0000-000000000002
 begin
     model_hybrid = bayesian_delay_difference_model(catches, recruits, obs_survey, cfg;
         obs_cv=0.20, prior_b0_mu=80.0, prior_b0_sd=15.0)
-    chain_hybrid = sample(model_hybrid, NUTS(0.65), 200; progress=false, check_model=false)
-    (mean_s = mean(chain_hybrid[:s]), mean_b0 = mean(chain_hybrid[:b0]))
+    if run_model
+        chain_hybrid = sample(model_hybrid, NUTS(0.65), 200; progress=false, check_model=false)
+        (mean_s = mean(chain_hybrid[:s]), mean_b0 = mean(chain_hybrid[:b0]))
+    else
+        (status = "Sampling skipped (run_model = false).",)
+    end
 end
 
 # ╔═╡ 50000000-0000-0000-0000-000000000001
 md"""
-## 6. Hybrid `@bstm` model
+## 6. Hybrid `@tbm` model
 note: simple linear regression baseline (see section 8 for the dynamics-based version).
 """
 
 # ╔═╡ 50000000-0000-0000-0000-000000000002
 begin
     df_hybrid = DataFrame(years=years, catches=catches, y=obs_survey, s_idx=fill(1, length(years)))
-    m_hybrid = @bstm(
+    m_hybrid = @tbm(
         likelihood(y, family = gaussian) ~ intercept() + fixed(catches),
         df_hybrid;
         verbose = false
     )
-    chain_hybrid_bstm = sample(m_hybrid, NUTS(15, 0.65), 100; progress = false)
-    (status = "sampled",)
+    if run_model
+        chain_hybrid_TethysBayes = sample(m_hybrid, NUTS(15, 0.65), 100; progress = false)
+        (status = "sampled",)
+    else
+        (status = "Sampling skipped (run_model = false).",)
+    end
 end
 
 # ╔═╡ 60000000-0000-0000-0000-000000000001
 md"""
-## 7. Custom() escape hatch: AssessmentTools model inside @bstm
+## 7. Custom() escape hatch: TethysPop model inside @tbm
 """
 
 # ╔═╡ 60000000-0000-0000-0000-000000000002
 md"""
-The `extract_model_body()` helper (defined in `bstm/src/model.jl`) strips the
+The `extract_model_body()` helper (defined in `TethysBayes/src/model.jl`) strips the
 `@model function ... end` wrapper from the `@code_string` output, returning only
 the body as a code fragment. The fragment runs inside a `let` block, so `ny`,
 `catches`, `recruits`, `obs` and `cfg` must be available in scope.
@@ -135,26 +157,30 @@ begin
     ny = length(years)
     obs = obs_survey
 
-    # Extract the raw Turing code fragment from AssessmentTools' @model function.
-    full_text = @code_string AssessmentTools.bayesian_delay_difference_model(
+    # Extract the raw Turing code fragment from TethysPop' @model function.
+    full_text = @code_string TethysPop.bayesian_delay_difference_model(
         catches, recruits, obs_survey, cfg
     )
     code_fragment = extract_model_body(full_text)
 
-    model_custom = @bstm(
+    model_custom = @tbm(
         likelihood(y, family = gaussian) ~ intercept() + custom(code_fragment),
         df_hybrid;
         params = Dict(:cfg => cfg),
         verbose = false
     )
-    chain_custom = sample(model_custom, NUTS(0.65), 200; progress=false)
+    chain_custom = if run_model
+        sample(model_custom, NUTS(0.65), 200; progress=false)
+    else
+        "Sampling skipped (run_model = false)."
+    end
     chain_custom
 end
 
 # ╔═╡ 60000000-0000-0000-0000-000000000004
 md"""
 Notes:
-- No `@model` stripping tool exists in bstm; authoring the fragment directly is the
+- No `@model` stripping tool exists in TethysBayes; authoring the fragment directly is the
   recommended path.
 - Parameter names inside the fragment must not collide with other components.
 - Add `params = Dict(:cfg => cfg, :reconstruct_func => my_reconstruct_func)` if you
@@ -163,7 +189,7 @@ Notes:
 
 # ╔═╡ 70000000-0000-0000-0000-000000000001
 md"""
-## 8. Biomass dynamics via `dynamics()` component in `@bstm`
+## 8. Biomass dynamics via `dynamics()` component in `@tbm`
 """
 
 # ╔═╡ 70000000-0000-0000-0000-000000000002
@@ -181,7 +207,7 @@ begin
         t_idx = years,
     )
     W_bio = Matrix(1.0I, 1, 1)
-    m_bio = @bstm(
+    m_bio = @tbm(
         likelihood(y, family = gaussian) ~ intercept() +
             dynamics(s_idx, t_idx, model = "logistic",
                      intrinsic_growth_rate = LogNormal(0.0, 1.0),
@@ -190,19 +216,23 @@ begin
         W = W_bio,
         verbose = false
     )
-    chain_bio = sample(m_bio, NUTS(0.65), 100; progress = false, check_model = false)
-    (status = "sampled", keys = collect(keys(chain_bio)))
+    if run_model
+        chain_bio = sample(m_bio, NUTS(0.65), 100; progress = false, check_model = false)
+        (status = "sampled", keys = collect(keys(chain_bio)))
+    else
+        (status = "Sampling skipped (run_model = false).",)
+    end
 end
 
 # ╔═╡ 70000000-0000-0000-0000-000000000004
 md"""
-## 9. Biomass dynamics via `AssessmentTools` (bayesian_logistic_discrete)
+## 9. Biomass dynamics via `TethysPop` (bayesian_logistic_discrete)
 """
 
 # ╔═╡ 70000000-0000-0000-0000-000000000005
 md"""
-`AssessmentTools.bayesian_logistic_discrete` implements a Schaefer surplus production
-model. We wrap it in `@bstm` via `custom()` using `@code_string`.
+`TethysPop.bayesian_logistic_discrete` implements a Schaefer surplus production
+model. We wrap it in `@tbm` via `custom()` using `@code_string`.
 """
 
 # ╔═╡ 70000000-0000-0000-0000-000000000006
@@ -210,7 +240,7 @@ begin
     removals = catches
     survey_obs = obs_survey
 
-    full_text_bd = @code_string AssessmentTools.bayesian_logistic_discrete(
+    full_text_bd = @code_string TethysPop.bayesian_logistic_discrete(
         removals, survey_obs
     )
     code_fragment_bd = extract_model_body(full_text_bd)
@@ -220,25 +250,29 @@ begin
         y = obs_survey,
         s_idx = fill(1, length(years)),
     )
-    model_bio_ct = @bstm(
+    model_bio_ct = @tbm(
         likelihood(y, family = gaussian) ~ intercept() + custom(code_fragment_bd),
         df_bio_ct;
         params = Dict(:removals => removals, :survey_obs => survey_obs),
         verbose = false
     )
-    chain_bio_ct = sample(model_bio_ct, NUTS(0.65), 100; progress = false, check_model = false)
-    (status = "sampled",)
+    if run_model
+        chain_bio_ct = sample(model_bio_ct, NUTS(0.65), 100; progress = false, check_model = false)
+        (status = "sampled",)
+    else
+        (status = "Sampling skipped (run_model = false).",)
+    end
 end
 
 # ╔═╡ 70000000-0000-0000-0000-000000000007
 md"""
-## 10. Delay-difference via `dynamics()` component in `@bstm`
+## 10. Delay-difference via `dynamics()` component in `@tbm`
 """
 
 # ╔═╡ 70000000-0000-0000-0000-000000000008
 md"""
 The `dynamics()` component (docs §5.5) supports `model="delay_difference"` directly
-inside `@bstm`, using `s_idx`/`t_idx` and a spatial adjacency matrix `W`.
+inside `@tbm`, using `s_idx`/`t_idx` and a spatial adjacency matrix `W`.
 """
 
 # ╔═╡ 70000000-0000-0000-0000-000000000009
@@ -250,7 +284,7 @@ begin
         t_idx = years,
     )
     W_dyn = Matrix(1.0I, 1, 1)
-    m_dyn = @bstm(
+    m_dyn = @tbm(
         likelihood(y, family = gaussian) ~ intercept() +
             dynamics(s_idx, t_idx, model = "delay_difference",
                      intrinsic_growth_rate = LogNormal(0.0, 1.0),
@@ -260,8 +294,12 @@ begin
         W = W_dyn,
         verbose = false
     )
-    chain_dyn = sample(m_dyn, NUTS(0.65), 100; progress = false, check_model = false)
-    (status = "sampled", keys = collect(keys(chain_dyn)))
+    if run_model
+        chain_dyn = sample(m_dyn, NUTS(0.65), 100; progress = false, check_model = false)
+        (status = "sampled", keys = collect(keys(chain_dyn)))
+    else
+        (status = "Sampling skipped (run_model = false).",)
+    end
 end
 
 # ╔═╡ 70000000-0000-0000-0000-000000000010
@@ -272,26 +310,30 @@ md"""
 # ╔═╡ 70000000-0000-0000-0000-000000000011
 md"""
 `CodeTracking.@code_string` extracts the source text of a function at runtime.
-We use it to pull the body of `AssessmentTools.bayesian_delay_difference_model`
+We use it to pull the body of `TethysPop.bayesian_delay_difference_model`
 and inject it via `custom()`.
 """
 
 # ╔═╡ 70000000-0000-0000-0000-000000000012
 begin
     # Extract the full @model source text via CodeTracking.
-    full_text = @code_string AssessmentTools.bayesian_delay_difference_model(
+    full_text = @code_string TethysPop.bayesian_delay_difference_model(
         catches, recruits, obs_survey, cfg
     )
 
-    # Use bstm's extract_model_body to strip the @model wrapper.
+    # Use TethysBayes's extract_model_body to strip the @model wrapper.
     code_fragment_ct = extract_model_body(full_text)
 
-    model_ct = @bstm(
+    model_ct = @tbm(
         likelihood(y, family = gaussian) ~ intercept() + custom(code_fragment_ct),
         df_hybrid;
         params = Dict(:cfg => cfg),
         verbose = false
     )
-    chain_ct = sample(model_ct, NUTS(0.65), 200; progress = false, check_model = false)
-    (status = "sampled",)
+    if run_model
+        chain_ct = sample(model_ct, NUTS(0.65), 200; progress = false, check_model = false)
+        (status = "sampled",)
+    else
+        (status = "Sampling skipped (run_model = false).",)
+    end
 end

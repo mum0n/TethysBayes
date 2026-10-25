@@ -1,7 +1,7 @@
 """
     Custom <: ComponentModel
 
-A component for injecting user-defined arbitrary code into the `bstm` model.
+A component for injecting user-defined arbitrary code into the `TethysBayes` model.
 This provides an "escape hatch" for advanced users who need to implement logic
 not covered by the standard components.
 
@@ -12,7 +12,7 @@ v1.0.0
 This component does not have a fixed mathematical form. It is a "blank canvas"
 where the user provides a `code_fragment` string containing valid Turing.jl model
 code. This allows for the implementation of novel statistical relationships, custom
-priors, or likelihoods not covered by the standard `bstm` components. The user is
+priors, or likelihoods not covered by the standard `TethysBayes` components. The user is
 responsible for defining the mathematical logic within this code fragment.
 
 For example, a user could implement a custom non-linear function:
@@ -31,9 +31,9 @@ result to the linear predictor `eta`.
 
 # Best Use Case
 Prototyping new models, implementing highly specialized statistical processes, or
-integrating logic from other libraries directly into a `bstm` model without needing
+integrating logic from other libraries directly into a `TethysBayes` model without needing
 to create a full custom component file from scratch. It serves as a powerful didactic
-tool for learning how `bstm` constructs models.
+tool for learning how `TethysBayes` constructs models.
 
 # Inputs
 - **Required**:

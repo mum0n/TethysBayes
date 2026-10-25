@@ -1,4 +1,4 @@
-# File: c:\home\jae\projects\bstm\src\components\fitc.jl
+# File: c:\home\jae\projects\TethysBayes\src\components\fitc.jl
 """
     FITC <: ComponentModel
 

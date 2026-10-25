@@ -93,7 +93,7 @@ function get_precomputes(m::BSpline, M::NamedTuple, mod_data::Dict)::NamedTuple
     n_obs, n_dims = size(coords)
     
     # Generate the B-spline basis matrix on the CPU.
-    B, actual_nbins = bstm_bspline_basis(coords[:, 1], m.nbins, m.degree)
+    B, actual_nbins = TethysBayes_bspline_basis(coords[:, 1], m.nbins, m.degree)
     n_latent = actual_nbins
 
     # Build the RW2 penalty matrix template on the CPU.
@@ -343,7 +343,7 @@ function get_effects(
 
     B_full = if !isnothing(PS) && hasproperty(PS.data, coord_var_sym)
         coords_pred = PS.data[!, coord_var_sym]
-        B_pred, _ = bstm_bspline_basis(coords_pred, m.nbins, m.degree)
+        B_pred, _ = TethysBayes_bspline_basis(coords_pred, m.nbins, m.degree)
         vcat(B_train, B_pred)
     else
         B_train

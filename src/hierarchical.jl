@@ -1,5 +1,5 @@
 # ==============================================================================
-# BSTM HIERARCHICAL WORKFLOW & PROVENANCE ENGINE
+# TethysBayes HIERARCHICAL WORKFLOW & PROVENANCE ENGINE
 # ==============================================================================
 # Generic Infrastructure for Multi-Tier Hierarchical Spatiotemporal Pipelines:
 # - Data Trait Fingerprinting & Change-Detection
@@ -350,7 +350,7 @@ function check_pipeline_status(db_path::AbstractString, tiers_spec::Vector{<:Nam
 
     if verbose
         println("\n" * "="^95)
-        println("BSTM HIERARCHICAL WORKFLOW: STATUS & RESTART RECOMMENDATIONS")
+        println("TethysBayes HIERARCHICAL WORKFLOW: STATUS & RESTART RECOMMENDATIONS")
         println("="^95)
         @printf("%-28s %-22s %-10s %-22s %-20s\n", "Tier / Segment", "Update Schedule", "Status", "Last Run (UTC)", "Action Recommendation")
         println("-"^95)

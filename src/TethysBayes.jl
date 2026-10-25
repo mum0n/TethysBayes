@@ -1,8 +1,14 @@
-module bstm
+"""
+    module TethysBayes
+
+Bayesian spatio-temporal modeling and inference suite.
+Formerly known as `TethysBayes`.
+"""
+module TethysBayes
 
     # `Reexport` pulls another package's names into this module's namespace and
-    # re-exports them, so `using bstm` also brings in that package's API. Turing is
-    # re-exported because bstm is a framework built on it and users need `@model`,
+    # re-exports them, so `using TethysBayes` also brings in that package's API. Turing is
+    # re-exported because TethysBayes is a framework built on it and users need `@model`,
     # `NUTS` and friends; `Random`, `Distributions` and `DataFrames` are re-exported for
     # the same convenience. Everything else is imported privately and, where the public
     # API needs it, re-exported explicitly further down.
@@ -65,16 +71,15 @@ module bstm
         CoordRefSystems, 
         Unitful
 
-    # Spatial/temporal partitioning engine. Since v1.1.0 this lives in the
-    # standalone GeoPartitioning package (extracted verbatim from the former
-    # src/partitioning.jl); its public API is imported explicitly so every
+    # Spatial/temporal partitioning engine. This lives in the
+    # Tethys.Partitioning module; its public API is imported explicitly so every
     # internal call site and the `export` block further down keep working.
-    # Underscore-prefixed internals of GeoPartitioning (`_compute_scaling_factor`,
+    # Underscore-prefixed internals of Partitioning (`_compute_scaling_factor`,
     # `nodes`, `_safe_mean`, `ensure_connected!`, ...) are deliberately NOT
     # imported: `model.jl` owns `_compute_scaling_factor(evals::Vector{Float64},
     # rank_deficiency::Int)`, consumed by the smoothness components, and merging
     # the two same-named method tables would silently change dispatch.
-    using GeoPartitioning:
+    using Tethys.Partitioning:
         assign_spatial_units,
         assign_spatial_units_inferred,
         assign_time_units,
@@ -99,43 +104,22 @@ module bstm
         STANDARD_SPATIAL_COORDINATE_PAIRS,
         STANDARD_TEMPORAL_CANDIDATES
 
+    # Unified visualization and mapping engine
+    using TethysPlots
+    @reexport using TethysPlots
+
     # Export thin wrappers for essential symbols from demoted packages.
-    #
-    # NOTE: `plot`, `scatter`, `heatmap` and `theme` used to be exported here, but they
-    # are owned by `Plots` — a *weak* dependency that `bstm` does not import. Neither
-    # this module nor the `BSTMPlotsExt` extension ever defined them, so they were
-    # exported-but-undefined and raised `UndefVarError` on use. The plotting entry points
-    # bstm actually owns are stubbed below and filled in by the extension.
     export LatLon, Mercator, Cartesian
     export @u_str, ustrip
 
-    srcdir = @__DIR__  # bstm/src
-    rootdir = dirname(srcdir) # bstm
-    docsdir = joinpath(rootdir, "docs") # bstm/docs
+    srcdir = @__DIR__  # TethysBayes/src
+    rootdir = dirname(srcdir) # TethysBayes
+    docsdir = joinpath(rootdir, "docs") # TethysBayes/docs
 
-    # Empty function stubs for BSTMPlotsExt extension
-    function bstm_plots end
-    function _bstm_plots_impl end
-    function plot_spatial_surface end
-    function save_plots end
-    function plot_kde_simple end
-    function create_theme end
-    function choropleth end
-    function timeseries_ci end
-    function spatial_graph_plot end
-    function render_paths! end
-    function map_point_occupancy end
-    function save_plot end
+    # Bayesian-specific diagnostic plotting stubs for TethysBayesPlotsExt extension
+    function TethysBayes_plots end
+    function _TethysBayes_plots_impl end
     function model_results_plots end
-    function plot_hsi_choropleth end
-    function plot_diffusion_map end
-    function plot_residence_time_map end
-    function plot_advection_arrows end
-    function plot_velocity_field end
-    function plot_hexagonal_field end
-    function plot_hydrodynamic_stratification end
-    function plot_hydrodynamic_diffusion end
-    function plot_hydrodynamic_section end
     function par_credible_interval_plot end
     function par_forest_plot end
     function plot_ppc end
@@ -156,8 +140,7 @@ module bstm
     include( "likelihoods.jl")
     include( "model.jl")
     include( "parameters.jl")
-    # `partitioning.jl` was removed: the engine now lives in GeoPartitioning,
-    # imported under `using GeoPartitioning` above.
+    # `partitioning.jl` was relocated into Tethys.Partitioning.
     include( "pipeline.jl")
     include( "reconstruction.jl")  
     include( "par.jl")
@@ -183,8 +166,9 @@ module bstm
 
     # User-facing API exports
     export 
-        @bstm,
-        bstm_config,
+        @tbm,
+        @TethysBayes,
+        TethysBayes_config,
         model_results_comprehensive,
         convert_to_chains,
         reconstruct,
@@ -192,20 +176,20 @@ module bstm
         precompute_step_sizes,
         predict,
         show_model,
-        bstm_surface_derivatives,
+        TethysBayes_surface_derivatives,
         compute_topographic_metrics,
         generate_rff_params,
         build_structure_template,
-        bstm_pipeline,
+        TethysBayes_pipeline,
         compute_network_transfer_matrix,
         reshard_spatial_field,
         summarize_sample_matrix,
         PipelineResult,
         PipelineTierSpec,
-        bstm_cv_orchestrator,
-        bstm_plots,
+        TethysBayes_cv_orchestrator,
+        TethysBayes_plots,
         plot_spatial_surface,
-        bstm_sample,
+        TethysBayes_sample,
         save_plots,
         NESTED_COUPLING_MODES,
         STANDARD_SPATIAL_COORDINATE_PAIRS,
@@ -220,7 +204,7 @@ module bstm
         assign_time_units, 
         assign_spatiotemporal_units,
         discretize_data, 
-        bstm_data, 
+        TethysBayes_data, 
         expand_hull, 
         generate_mock_hierarchical_datasets,
         map_to_units,
@@ -287,19 +271,19 @@ module bstm
         leaflet_spacetime_map,
 
         # Input / Output & Persistence exports
-        save_bstm_model,
-        load_bstm_model,
-        BSTM_SCHEMA_VERSION,
+        save_TethysBayes_model,
+        load_TethysBayes_model,
+        TethysBayes_SCHEMA_VERSION,
 
-        save_bstm_results, 
-        load_bstm_results, 
+        save_TethysBayes_results, 
+        load_TethysBayes_results, 
         query_duckdb,   
         export_posterior_samples_to_duckdb, 
         import_posterior_samples_from_duckdb,
         append_posterior_samples, 
         extend_sampling,
-        save_bstm_bundle, 
-        load_bstm_bundle,
+        save_TethysBayes_bundle, 
+        load_TethysBayes_bundle,
         export_spatial_results_to_geojson, 
         extract_posterior_priors,
         extract_prior_posterior,
@@ -332,9 +316,9 @@ module bstm
     # ---------------------------------------------------------------------------
     # Runtime namespace for generated model code
     #
-    # The model body produced by `bstm_text_assembler` used to be `Core.eval`'d in
-    # `bstm` itself, so it resolved names -- `Normal`, `filldist`, `MvNormal`, `I`,
-    # `logistic`, ... -- only because `bstm` happened to re-export Turing, Distributions
+    # The model body produced by `TethysBayes_text_assembler` used to be `Core.eval`'d in
+    # `TethysBayes` itself, so it resolved names -- `Normal`, `filldist`, `MvNormal`, `I`,
+    # `logistic`, ... -- only because `TethysBayes` happened to re-export Turing, Distributions
     # and LinearAlgebra. That made the generated code's dependencies implicit and
     # load-bearing: dropping a `using` from this module, or a future change to what we
     # re-export, would silently change the code the generator emits.
@@ -361,13 +345,13 @@ module bstm
         # Cubic interpolation for the basis / spline components.
         using Interpolations
         # `nzrange` for the `dag` component's generated neighbour loop. `SparseArrays`
-        # exports it and it is defined in bstm, but the runtime module does not inherit
-        # bstm's imports, so the unqualified name did not resolve there and `dag` failed at
+        # exports it and it is defined in TethysBayes, but the runtime module does not inherit
+        # TethysBayes's imports, so the unqualified name did not resolve there and `dag` failed at
         # `rand(m)`. Same root cause as a missing entry in `_GENERATED_CODE_HELPERS` below.
         using SparseArrays
     end
 
-    # bstm's own helpers, reachable from the generated body. Bound as values once every
+    # TethysBayes's own helpers, reachable from the generated body. Bound as values once every
     # include has run, so the module needs no relative-path import.
     #
     # This list is the complete set of package functions the generated model body calls.
@@ -375,7 +359,7 @@ module bstm
     # helper, the model fails to build with that name in the error until it is added.
     const _GENERATED_CODE_HELPERS = Symbol[
         :_model_float_type,
-        :bstm_Likelihood,
+        :TethysBayes_Likelihood,
         :evaluate_kernel_matrix,
         :evaluate_cross_kernel_matrix,
         :_sparse_gp_lambda_diag,
@@ -406,27 +390,27 @@ module bstm
         :_spde_log_marginal_likelihood,
         :_tps_log_marginal_likelihood,
         # --- added for the components that could not be sampled at all ---
-        # Each of these is a bstm helper called from a generated model body. They were
+        # Each of these is a TethysBayes helper called from a generated model body. They were
         # missing from this list, so `fft`, `wavelet` and `hyperbolic` all failed at
         # `rand(m)` with `UndefVarError: <helper> not defined in
         # _GeneratedModelRuntime` -- i.e. these three components could not be sampled at all.
         # The error names the missing binding, which is the intended behaviour of the
         # allowlist: add the name here rather than widening the runtime module.
-        :bstm_fourier_basis,                      # `fft`
-        :bstm_tensor_product_wavelet_basis,       # `wavelet`
+        :TethysBayes_fourier_basis,                      # `fft`
+        :TethysBayes_tensor_product_wavelet_basis,       # `wavelet`
         :_evaluate_hyperbolic_kernel_matrix,      # `hyperbolic`
     ]
     for _helper in _GENERATED_CODE_HELPERS
         isdefined(@__MODULE__, _helper) || error(
             "generated-code helper `$_helper` is not defined; it is declared in " *
-            "_GENERATED_CODE_HELPERS but missing from bstm")
+            "_GENERATED_CODE_HELPERS but missing from TethysBayes")
         Core.eval(_GeneratedModelRuntime, Expr(:const, _helper, getfield(@__MODULE__, _helper)))
     end
 
     # ---------------------------------------------------------------------------
     # Precompilation workload
     #
-    # bstm's hot path is runtime string codegen (`bstm_text_assembler` -> `Core.eval`),
+    # TethysBayes's hot path is runtime string codegen (`TethysBayes_text_assembler` -> `Core.eval`),
     # so almost nothing in the model pipeline is compiled until a user first fits a
     # model. This workload walks the representative path once at precompile time:
     # formula parse -> config -> codegen -> model instantiation -> density evaluation ->
@@ -444,14 +428,14 @@ module bstm
         )
         _wl_W = spatial_knn_graph([(Float64(i), 0.0) for i in 1:6], 2)[2]
 
-        _wl_m = bstm_core(
+        _wl_m = TethysBayes_core(
             "likelihood(y, family=poisson) ~ intercept() + fixed(x) + random(s_idx, model=bym2)",
-            _wl_df, bstm; W = _wl_W, verbose = false)
+            _wl_df, TethysBayes; W = _wl_W, verbose = false)
 
         # Exercises model evaluation, the world-age trampoline and chain construction.
         _wl_chn = sample(_wl_m, Turing.Prior(), 3; progress = false, check_model = false)
         convert_to_chains(_wl_chn)
     end
 
-end # module bstm
+end # module TethysBayes
 

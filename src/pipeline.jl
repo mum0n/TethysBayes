@@ -1,7 +1,7 @@
 """
     pipeline.jl
 
-Declarative Modular DAG Pipeline Orchestrator (`bstm_pipeline`), Multi-Tier
+Declarative Modular DAG Pipeline Orchestrator (`TethysBayes_pipeline`), Multi-Tier
 Spatial Network Resharding, Uncertainty Propagation (EIV), and Relational
 Database Harmonization for Bayesian Spatio-Temporal Models.
 
@@ -412,7 +412,7 @@ end
 """
     PipelineTierSpec
 
-Specification for a single hierarchical modeling tier in `bstm_pipeline`.
+Specification for a single hierarchical modeling tier in `TethysBayes_pipeline`.
 """
 struct PipelineTierSpec
     name::Symbol
@@ -457,7 +457,7 @@ end
     PipelineResult
 
 Complete execution artifacts, multi-tier models, chains, relational DuckDB database,
-and harmonized master datasets produced by `bstm_pipeline`.
+and harmonized master datasets produced by `TethysBayes_pipeline`.
 """
 struct PipelineResult
     tier_names::Vector{Symbol}
@@ -472,13 +472,13 @@ struct PipelineResult
 end
 
 # ==============================================================================
-# SECTION 3: PUBLIC API (`bstm_pipeline`)
+# SECTION 3: PUBLIC API (`TethysBayes_pipeline`)
 # ==============================================================================
 
 """
-    bstm_pipeline(tiers...; master_au=nothing, duckdb_path=":memory:", jld2_path=nothing, geojson_path=nothing, verbose=true)
+    TethysBayes_pipeline(tiers...; master_au=nothing, duckdb_path=":memory:", jld2_path=nothing, geojson_path=nothing, verbose=true)
 
-Executes a multi-tier Bayesian Spatio-Temporal Model (BSTM) hierarchical pipeline
+Executes a multi-tier Bayesian Spatio-Temporal Model (TethysBayes) hierarchical pipeline
 with automated network resharding, Errors-in-Variables (EIV) uncertainty propagation,
 DuckDB relational persistence, and master network harmonization.
 
@@ -495,7 +495,7 @@ DuckDB relational persistence, and master network harmonization.
 A `PipelineResult` object containing all models, chains, derivatives, DuckDB tables, and
 the unified master summary DataFrame.
 """
-function bstm_pipeline(
+function TethysBayes_pipeline(
     tiers::Pair{Symbol, <:NamedTuple}...;
     master_au::Union{NamedTuple, Nothing}=nothing,
     duckdb_path::AbstractString=":memory:",
@@ -507,7 +507,7 @@ function bstm_pipeline(
     n_tiers = length(tier_specs)
 
     if n_tiers == 0
-        error("bstm_pipeline requires at least one modeling tier.")
+        error("TethysBayes_pipeline requires at least one modeling tier.")
     end
 
     models = Dict{Symbol, DynamicPPL.Model}()
@@ -520,7 +520,7 @@ function bstm_pipeline(
 
     if verbose
         println("\n==============================================================================")
-        println("  BSTM HIERARCHICAL MODULAR DAG PIPELINE ORCHESTRATOR")
+        println("  TethysBayes HIERARCHICAL MODULAR DAG PIPELINE ORCHESTRATOR")
         println("  Tiers: $(join([string(t.name) for t in tier_specs], " -> "))")
         println("  DuckDB: $(duckdb_path)")
         println("==============================================================================\n")
@@ -601,9 +601,9 @@ function bstm_pipeline(
         end
  
         m_tier = if !isnothing(cur_W)
-            bstm_core(spec.formula, cur_df, @__MODULE__; W=cur_W, verbose=false)
+            TethysBayes_core(spec.formula, cur_df, @__MODULE__; W=cur_W, verbose=false)
         else
-            bstm_core(spec.formula, cur_df, @__MODULE__; verbose=false)
+            TethysBayes_core(spec.formula, cur_df, @__MODULE__; verbose=false)
         end
 
          
@@ -628,7 +628,7 @@ function bstm_pipeline(
             end
 
             if !isnothing(coords_query)
-                deriv_res = bstm_surface_derivatives(
+                deriv_res = TethysBayes_surface_derivatives(
                     m_tier, chn_tier, coords_query;
                     metrics=spec.derivatives,
                     radii=spec.radii,

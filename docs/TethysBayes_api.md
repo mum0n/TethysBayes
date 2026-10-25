@@ -1,68 +1,68 @@
 ---
-title: "BSTM Technical API Reference"
+title: "TethysBayes Technical API Reference"
 format: html
 ---
 
-# BSTM Technical API Reference
+# TethysBayes Technical API Reference
 
-This document provides a comprehensive technical reference for the internal architecture, APIs, components, and extension points of the `bstm` framework. It covers the core modeling macro `@bstm`, formula parsing engine, configuration pipeline, `ComponentModel` interface, Parameter Registry system, mathematical component formulations, inference engines, posterior reconstruction, plotting subsystem, spatial partitioning infrastructure, and two-tier persistence subsystem.
+This document provides a comprehensive technical reference for the internal architecture, APIs, components, and extension points of the `TethysBayes` framework. It covers the core modeling macro `@tbm`, formula parsing engine, configuration pipeline, `ComponentModel` interface, Parameter Registry system, mathematical component formulations, inference engines, posterior reconstruction, plotting subsystem, spatial partitioning infrastructure, and two-tier persistence subsystem.
 
 ---
 
 ## 1. Framework Architecture & End-to-End Workflow
 
-The `bstm` framework translates high-level domain formulas into optimized, differentiable Turing.jl probabilistic programs, executes MCMC sampling or variational inference, and reconstructs structured posterior effects:
+The `TethysBayes` framework translates high-level domain formulas into optimized, differentiable Turing.jl probabilistic programs, executes MCMC sampling or variational inference, and reconstructs structured posterior effects:
 
 ```
                                ┌────────────────────────────────────────────────────────┐
-                               │  User Model Call: @bstm(formula, data, kwargs...)      │
+                               │  User Model Call: @tbm(formula, data, kwargs...)      │
                                └───────────────────────────┬────────────────────────────┘
                                                            │
                                                            ▼
                                ┌────────────────────────────────────────────────────────┐
-                               │  Formula Parser: decompose_bstm_formula                │
+                               │  Formula Parser: decompose_TethysBayes_formula                │
                                │  (LHS Likelihood & RHS AST Module Categorization)      │
                                └───────────────────────────┬────────────────────────────┘
                                                            │
                                                            ▼
                                ┌────────────────────────────────────────────────────────┐
-                               │  Configuration Engine: bstm_config                     │
+                               │  Configuration Engine: TethysBayes_config                     │
                                │  (Precomputes, Dimensions, Hyperpriors, Registry)      │
                                └───────────────────────────┬────────────────────────────┘
                                                            │
                                                            ▼
                                ┌────────────────────────────────────────────────────────┐
-                               │  Turing Code Generator: bstm_text_assembler            │
+                               │  Turing Code Generator: TethysBayes_text_assembler            │
                                │  (Dynamic @model generation with AD-safe constructors) │
                                └───────────────────────────┬────────────────────────────┘
                                                            │
                                                            ▼
                                ┌────────────────────────────────────────────────────────┐
-                               │  Inference Engine: get_optimal_sampler / bstm_sample   │
+                               │  Inference Engine: get_optimal_sampler / TethysBayes_sample   │
                                │  (Automatic Gibbs block-partitioning & NUTS sampling)  │
                                └───────────────────────────┬────────────────────────────┘
                                                            │
                                                            ▼
                                ┌────────────────────────────────────────────────────────┐
                                │  Posterior Reconstruction: model_results_comprehensive│
-                               │  (Latent discovery, ParamRegistry lookup, bstm_plots)  │
+                               │  (Latent discovery, ParamRegistry lookup, TethysBayes_plots)  │
                                └───────────────────────────┬────────────────────────────┘
                                                            │
                                                            ▼
                                ┌────────────────────────────────────────────────────────┐
-                               │  Persistence & SQL Analytics: save_bstm_bundle / DuckDB│
+                               │  Persistence & SQL Analytics: save_TethysBayes_bundle / DuckDB│
                                │  (JLD2 live models, DuckDB tables, GeoJSON, CSV)       │
                                └────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. The `@bstm` Macro & Configuration Engine
+## 2. The `@tbm` Macro & Configuration Engine
 
 ### 2.1. Macro Signature & Top-Level Options
 
 ```julia
-m = @bstm(formula, data; W=nothing, au=nothing, verbose=false, kwargs...)
+m = @tbm(formula, data; W=nothing, au=nothing, verbose=false, kwargs...)
 ```
 
 | Argument / Keyword | Type | Default | Description & Implications |
@@ -126,7 +126,7 @@ The LHS `likelihood(outcome, ...)` defines the observation likelihood distributi
 
 ### 2.2.1. Multinomial, Categorical, and Compositional Likelihoods
 
-The `bstm` framework provides native, mathematically identified formulations for unordered
+The `TethysBayes` framework provides native, mathematically identified formulations for unordered
 multi-class, multinomial count, and compositional proportion data across $K \ge 2$ categories.
 
 #### Model Specifications & Formula Syntax
@@ -162,7 +162,7 @@ $$\operatorname{softmax}(\boldsymbol{\eta} + c) = \operatorname{softmax}(\boldsy
 Estimating $K$ unconstrained linear predictors introduces complete non-identifiability,
 inducing MCMC random-walk drift and poor sampling efficiency.
 
-To guarantee mathematical identifiability, `bstm` constrains the linear predictor of the
+To guarantee mathematical identifiability, `TethysBayes` constrains the linear predictor of the
 reference category ($k = 1$) to zero:
 $$\eta_{i, 1} \equiv 0$$
 For non-reference categories $k \in \{2, \dots, K\}$, latent linear predictors $\eta_{i, k}$
@@ -209,7 +209,7 @@ The RHS formula combines linear fixed effects, structured random fields, and pro
 
 ### 2.4. Formula Algebraic Operators
 
-The RHS parser (`decompose_bstm_formula`) supports algebraic composition operators:
+The RHS parser (`decompose_TethysBayes_formula`) supports algebraic composition operators:
 
 - **Addition (`+`)**: Additive combination of linear terms ($\eta = \eta_1 + \eta_2$).
 - **Kronecker Product (`⊗`)**: Spatiotemporal or multidimensional interaction ($A \otimes B$).
@@ -224,11 +224,11 @@ The RHS parser (`decompose_bstm_formula`) supports algebraic composition operato
 
 ### 2.5. Prior Specification & Penalized Complexity (PC) Priors API
 
-`bstm` provides automated mapping between intuitive quantile constraints and mathematical prior distributions:
+`TethysBayes` provides automated mapping between intuitive quantile constraints and mathematical prior distributions:
 
 ```julia
 # 1. PC Prior Quantile Constraints in Formula Calls
-@bstm(
+@tbm(
     likelihood(y, family=poisson) ~
         intercept(prior = Normal(0, 5)) +
         fixed(elevation, prior = (2.0, 0.05)) +       # P(|β| > 2.0) = 0.05 => Normal(0, 1.02)
@@ -310,7 +310,7 @@ struct IID <: ComponentModel
     method::Symbol # :noncentered, :centered, :marginalized
 end
 
-# 2. Registration in bstm registries
+# 2. Registration in TethysBayes registries
 COMPONENT_TYPE_REGISTRY[:iid] = IID
 COMPONENT_CONSTRUCTORS[:iid] = (p, params) -> IID(
     get(p, :sigma, Exponential(1.0)),
@@ -644,7 +644,7 @@ $$
 Y = Z \Lambda^{1/2} U^T + E, \quad E \sim \mathcal{N}(0, \operatorname{diag}(\sigma_{\epsilon, 1}^2, \dots, \sigma_{\epsilon, P}^2))
 $$
 
-To enforce strict orthonormality ($U^T U = I_K$) without identification sign-flipping or unconstrained matrix drift, `bstm` parameterizes $U$ using a product of Householder reflections:
+To enforce strict orthonormality ($U^T U = I_K$) without identification sign-flipping or unconstrained matrix drift, `TethysBayes` parameterizes $U$ using a product of Householder reflections:
 
 $$
 H_k = I - 2 \frac{v_k v_k^T}{\|v_k\|^2}, \quad U = \prod_{k=1}^K H_k
@@ -693,9 +693,9 @@ When the primary and proxy datasets differ in observation count ($N_{\text{hi}} 
 
 The preferred, modern syntax for defining multi-fidelity systems uses declarative pairs. This avoids escaped nested strings and permits native Julia formula expressions.
 
-##### Using the `@bstm` Macro
+##### Using the `@tbm` Macro
 ```julia
-model = @bstm(
+model = @tbm(
     :primary => (
         formula = likelihood(pm25_ground) ~ 1 + fixed(elevation) + transfer(:satellite),
         data    = df_ground
@@ -712,9 +712,9 @@ model = @bstm(
 chain = sample(model, NUTS(), 1000)
 ```
 
-##### Using `bstm_config` or `bstm_core`
+##### Using `TethysBayes_config` or `TethysBayes_core`
 ```julia
-cfg = bstm_config(
+cfg = TethysBayes_config(
     :primary => (
         formula = "likelihood(y_hi) ~ 1 + fixed(x) + transfer(:proxy)",
         data    = data_hi
@@ -733,7 +733,7 @@ cfg = bstm_config(
 
 For single-formula workflows, the `nested()` module remains fully supported:
 ```julia
-model = @bstm(
+model = @tbm(
     likelihood(y_hi) ~ 1 + fixed(x) +
         nested(proxy, formula="likelihood(y_lo) ~ 1 + fixed(x)",
                data_source=:proxy_data, mapping=:map_idx, prior=Normal(1.0, 0.5)),
@@ -798,7 +798,7 @@ os = get_optimal_sampler(
 # MCMC Sampling
 chn = sample(m, NUTS(), 1000; progress=false)
 chn = sample(m, os, 1000; progress=false)
-chn = bstm_sample(m, 1000; n_chains=3, progress=false)
+chn = TethysBayes_sample(m, 1000; n_chains=3, progress=false)
 
 # Optimization Inference
 map_res = optimize(m, MAP())
@@ -864,10 +864,10 @@ res = reconstruct(model, chain; alpha=0.05)
 | `effects` | `NamedTuple` | Summarized posterior effects across all registered model components. |
 | `transfer_results` | `Dict{Symbol, Any}` | Reconstructed outputs for each nested/transfer sub-model. |
 
-### 7.3. Diagnostic & Component Effect Plotting (`bstm_plots`)
+### 7.3. Diagnostic & Component Effect Plotting (`TethysBayes_plots`)
 
 ```julia
-plots_res = bstm_plots(res; data=inp_df, au=data_scot.au, save_dir=nothing, save_prefix="", fmt="png", dpi=150)
+plots_res = TethysBayes_plots(res; data=inp_df, au=data_scot.au, save_dir=nothing, save_prefix="", fmt="png", dpi=150)
 ```
 
 Generates the complete suite of diagnostic plots and underlying tidy datasets from `res`:
@@ -895,10 +895,10 @@ show_model(model)
 
 Prints formatted diagnostic information about the model, including the parsed formula, data schema, active components, generated Turing model code, and parameter registry mappings.
 
-### 7.6. Benchmark Datasets (`bstm_data`)
+### 7.6. Benchmark Datasets (`TethysBayes_data`)
 
 ```julia
-dataset = bstm_data("scottish_lip")
+dataset = TethysBayes_data("scottish_lip")
 ```
 
 Loads built-in benchmark spatiotemporal datasets (e.g. Scottish Lip Cancer disease mapping dataset with spatial polygons and adjacency matrix $W$).
@@ -919,7 +919,7 @@ All visualization methods return standard `Plots.Plot` objects and accept custom
 | `timeseries_ci` | `timeseries_ci(x, mean, lower, upper; ribbon_alpha=0.2, title="")` | Credible interval ribbon timeseries plot for temporal trends and seasonal curves. |
 | `render_paths!` | `render_paths!(p, paths; color=:crimson, alpha=0.7)` | Overlays agent/individual movement trajectories onto an existing spatial plot. |
 | `map_point_occupancy` | `map_point_occupancy(polygons, centroids, current_unit, previous_unit)` | Highlights occupied spatial units on a background map for discrete tracking. |
-| `bstm_plots` | `bstm_plots(model, chain, res, M; au=nothing, data=nothing, outcome=1)` | Comprehensive automated diagnostic plotting suite (PPC, fixed effects, spatial, temporal, SVC, etc.). |
+| `TethysBayes_plots` | `TethysBayes_plots(model, chain, res, M; au=nothing, data=nothing, outcome=1)` | Comprehensive automated diagnostic plotting suite (PPC, fixed effects, spatial, temporal, SVC, etc.). |
 | `model_results_plots` | `model_results_plots(res)` | Iterates and displays all diagnostic plots contained in a `model_results` struct. |
 | `save_plot` | `save_plot(p, path; fmt=nothing, dpi=150)` | Exports plot to disk, automatically creating parent directories if needed. |
 | `create_theme` | `create_theme(; fontsize=10, fontfamily="sans-serif", size=(900, 600))` | Generates standardized styling dictionaries for publication-ready figures. |
@@ -949,12 +949,12 @@ Comprehensive spatial discretization, graph extraction, and spatiotemporal index
 
 ---
 
-## 10. Cross-Validation Engine (`bstm_cv_orchestrator`)
+## 10. Cross-Validation Engine (`TethysBayes_cv_orchestrator`)
 
-The `bstm_cv_orchestrator` orchestrates rigorous cross-validation across spatiotemporal datasets:
+The `TethysBayes_cv_orchestrator` orchestrates rigorous cross-validation across spatiotemporal datasets:
 
 ```julia
-cv_res = bstm_cv_orchestrator(
+cv_res = TethysBayes_cv_orchestrator(
     formula,
     data;
     method = :spatial_block,
@@ -978,7 +978,7 @@ cv_res = bstm_cv_orchestrator(
 
 ## 11. Input / Output & Persistence API (`src/input_output.jl`)
 
-The `bstm` framework provides a high-performance, non-redundant serialization and analytical storage subsystem:
+The `TethysBayes` framework provides a high-performance, non-redundant serialization and analytical storage subsystem:
 - **JLD2 (`.jld2`)**: Full binary serialization of live Turing model states (`m`), formula configurations, data, and posterior MCMC chains (`chn`).
 - **DuckDB (`.duckdb`)**: Embedded relational SQL storage for post-processing results (`res`), diagnostic metrics, and posterior samples without memory redundancy.
 
@@ -986,17 +986,17 @@ The `bstm` framework provides a high-performance, non-redundant serialization an
 
 | Function                               | Signature                                                                                                                  | Description                                                                                                                                                        |
 | :---------------------------------------| :---------------------------------------------------------------------------------------------------------------------------| :-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `save_bstm_model`                      | `save_bstm_model(path, model; chain=nothing, au=nothing, metadata=Dict(), compress=true)`                                  | Serializes the complete Turing `@model` state, configuration `M`, data, and optional MCMC chain to JLD2.                                                           |
-| `load_bstm_model`                      | `load_bstm_model(path; calling_module=Main)`                                                                               | Reads JLD2 file and re-instantiates a live, callable `DynamicPPL.Model` ready for sampling or prediction.                                                          |
-| `save_bstm_results`                    | `save_bstm_results(duckdb_path, res; model=nothing, chain=nothing, au=nothing, table_prefix="", overwrite=true)`           | Normalizes `model_results_comprehensive` output into relational DuckDB tables (`metrics`, `parameter_stats`, `predictions`, `spatial_geometries`, `plots_data_*`). |
-| `load_bstm_results`                    | `load_bstm_results(duckdb_path; table_prefix="")`                                                                          | Reconstructs the `model_results_comprehensive` NamedTuple from DuckDB tables.                                                                                      |
-| `query_duckdb`                         | `query_duckdb(duckdb_path, sql_query)`                                                                                     | Executes analytical SQL queries directly against a BSTM DuckDB database, returning a DataFrame.                                                                    |
-| `export_posterior_samples_to_duckdb`   | `export_posterior_samples_to_duckdb(duckdb_path, chain, model=nothing; table_name="bstm_posterior_samples", format=:tidy)` | Exports MCMC posterior draws in `:tidy` long format `(iteration, chain, parameter, value)` or `:wide` format to DuckDB.                                            |
-| `import_posterior_samples_from_duckdb` | `import_posterior_samples_from_duckdb(duckdb_path; table_name="bstm_posterior_samples")`                                   | Reads stored posterior draws from DuckDB into a Julia DataFrame.                                                                                                   |
+| `save_TethysBayes_model`                      | `save_TethysBayes_model(path, model; chain=nothing, au=nothing, metadata=Dict(), compress=true)`                                  | Serializes the complete Turing `@model` state, configuration `M`, data, and optional MCMC chain to JLD2.                                                           |
+| `load_TethysBayes_model`                      | `load_TethysBayes_model(path; calling_module=Main)`                                                                               | Reads JLD2 file and re-instantiates a live, callable `DynamicPPL.Model` ready for sampling or prediction.                                                          |
+| `save_TethysBayes_results`                    | `save_TethysBayes_results(duckdb_path, res; model=nothing, chain=nothing, au=nothing, table_prefix="", overwrite=true)`           | Normalizes `model_results_comprehensive` output into relational DuckDB tables (`metrics`, `parameter_stats`, `predictions`, `spatial_geometries`, `plots_data_*`). |
+| `load_TethysBayes_results`                    | `load_TethysBayes_results(duckdb_path; table_prefix="")`                                                                          | Reconstructs the `model_results_comprehensive` NamedTuple from DuckDB tables.                                                                                      |
+| `query_duckdb`                         | `query_duckdb(duckdb_path, sql_query)`                                                                                     | Executes analytical SQL queries directly against a TethysBayes DuckDB database, returning a DataFrame.                                                                    |
+| `export_posterior_samples_to_duckdb`   | `export_posterior_samples_to_duckdb(duckdb_path, chain, model=nothing; table_name="TethysBayes_posterior_samples", format=:tidy)` | Exports MCMC posterior draws in `:tidy` long format `(iteration, chain, parameter, value)` or `:wide` format to DuckDB.                                            |
+| `import_posterior_samples_from_duckdb` | `import_posterior_samples_from_duckdb(duckdb_path; table_name="TethysBayes_posterior_samples")`                                   | Reads stored posterior draws from DuckDB into a Julia DataFrame.                                                                                                   |
 | `append_posterior_samples`             | `append_posterior_samples(chain1, chain2)`                                                                                 | Concatenates two MCMC chains across sampling iterations for chain extension.                                                                                       |
 | `extend_sampling`                      | `extend_sampling(model, prev_chain, n_additional_samples; sampler=NUTS(), kwargs...)`                                      | Warms up from previous chain state, samples additional iterations, and returns merged chains.                                                                      |
-| `save_bstm_bundle`                     | `save_bstm_bundle(base_path, model, chain, res; au=nothing, metadata=Dict())`                                              | Unified one-line persistence creating `<base_path>.jld2` (model & chain) and `<base_path>.duckdb` (results).                                                       |
-| `load_bstm_bundle`                     | `load_bstm_bundle(base_path; calling_module=Main)`                                                                         | Unified one-line loader recovering `(model=m, chain=chn, results=res, au=au, metadata=meta)`.                                                                      |
+| `save_TethysBayes_bundle`                     | `save_TethysBayes_bundle(base_path, model, chain, res; au=nothing, metadata=Dict())`                                              | Unified one-line persistence creating `<base_path>.jld2` (model & chain) and `<base_path>.duckdb` (results).                                                       |
+| `load_TethysBayes_bundle`                     | `load_TethysBayes_bundle(base_path; calling_module=Main)`                                                                         | Unified one-line loader recovering `(model=m, chain=chn, results=res, au=au, metadata=meta)`.                                                                      |
 | `export_spatial_results_to_geojson`    | `export_spatial_results_to_geojson(geojson_path, res, au; property_keys=nothing)`                                          | Serializes spatial model results and polygon boundaries to standard RFC 7946 GeoJSON.                                                                              |
 | `extract_posterior_priors`             | `extract_posterior_priors(source; parameter_names=nothing, prior_family=:normal)`                                          | Extracts posterior parameters and builds fitted prior distributions for sequential Bayesian updating.                                                              |
 | `save_model_ensemble`                  | `save_model_ensemble(duckdb_path, ensemble_dict; overwrite=true)`                                                          | Registers a multi-model ensemble in DuckDB and computes $\Delta \text{WAIC}$ and BMA weights.                                                                      |
@@ -1038,7 +1038,7 @@ The movement subsystem implements biophysical Advection-Diffusion-Reaction (ADR)
 
 | Function | Signature | Description |
 | :--- | :--- | :--- |
-| `bstm_surface_derivatives` | `bstm_surface_derivatives(model_obj, chain, coords; metrics=[:slope, :curvature, :bpi], radii=[5.0, 15.0, 30.0], alpha=0.05, return_samples=false, n_samples=nothing)` | Computes exact continuous surface derivatives ($\nabla z, \nabla^2 z$, slopes, aspects, profile/planform curvatures, Bessel BPI) across `RFF`, `SpectralGP`, `WaveletGP`, `SPDE`, `PSpline`, and `TPS`. |
+| `TethysBayes_surface_derivatives` | `TethysBayes_surface_derivatives(model_obj, chain, coords; metrics=[:slope, :curvature, :bpi], radii=[5.0, 15.0, 30.0], alpha=0.05, return_samples=false, n_samples=nothing)` | Computes exact continuous surface derivatives ($\nabla z, \nabla^2 z$, slopes, aspects, profile/planform curvatures, Bessel BPI) across `RFF`, `SpectralGP`, `WaveletGP`, `SPDE`, `PSpline`, and `TPS`. |
 | `compute_topographic_metrics` | `compute_topographic_metrics(z_samples, zx_samples, zy_samples, zxx_samples, zyy_samples, zxy_samples, bpi_samples, radii; alpha=0.05)` | Transforms raw spatial partial derivative sample matrices into geomorphometric summary metrics and empirical credible intervals. |
 
 ### 13.2. Modular DAG Pipeline & Topological Resharding (`src/pipeline.jl`)
@@ -1046,7 +1046,7 @@ The movement subsystem implements biophysical Advection-Diffusion-Reaction (ADR)
 | Type / Function | Signature | Description |
 | :--- | :--- | :--- |
 | `PipelineTierSpec` | `PipelineTierSpec(name, formula, data; au=nothing, W=nothing, sampler=NUTS(50, 0.65), n_samples=100, derivatives=Symbol[], radii=[10.0, 25.0])` | Declarative specification for an individual model tier within a multi-scale DAG pipeline. |
-| `bstm_pipeline` | `bstm_pipeline(tiers...; master_au=nothing, duckdb_path=":memory:", jld2_path=nothing, geojson_path=nothing, verbose=true)` | Orchestrates sequential multi-tier MCMC execution, dynamic spatial network resharding, DuckDB persistence, and canonical master harmonization. |
+| `TethysBayes_pipeline` | `TethysBayes_pipeline(tiers...; master_au=nothing, duckdb_path=":memory:", jld2_path=nothing, geojson_path=nothing, verbose=true)` | Orchestrates sequential multi-tier MCMC execution, dynamic spatial network resharding, DuckDB persistence, and canonical master harmonization. |
 | `compute_network_transfer_matrix` | `compute_network_transfer_matrix(au_src, au_dest; method=:area_weighted, bandwidth=nothing)` | Constructs sparse geometric linear transfer matrix $\mathbf{P} \in \mathbb{R}^{N_{\text{dest}} \times N_{\text{src}}}$ via area-weighted intersection, Gaussian kernel, or inverse-distance weighting. |
 | `reshard_spatial_field` | `reshard_spatial_field(source, au_src, au_dest; mode=:samples, method=:area_weighted, bandwidth=nothing, alpha=0.05)` | Reshards spatial latent fields across mismatched graphs in Full Monte Carlo sample matrix mode (`mode=:samples`) or moment mode (`mode=:moments`). |
 | `summarize_sample_matrix` | `summarize_sample_matrix(samples; alpha=0.05)` | Computes column-wise and row-wise empirical mean, standard deviation, median, and $(1-\alpha)$ credible intervals from an $N \times S$ Monte Carlo sample matrix. |

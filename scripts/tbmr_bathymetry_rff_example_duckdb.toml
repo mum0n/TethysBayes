@@ -1,10 +1,10 @@
 # ==============================================================================
-# BSTM Model Configuration: Scotian Shelf Bathymetry (DuckDB Output)
+# TethysBayes Model Configuration: Scotian Shelf Bathymetry (DuckDB Output)
 # Model 1: Random Fourier Features (RFF) Continuous Spatial Field
 # Reference: docs/bathymetry/bathymetry.md# Usage:
-#   julia --project=. scripts/bstmr.jl <config.toml> [options]
-#   julia --project=. scripts/bstmr.jl --config=<config.toml> [options]
-#   julia --project=. scripts/bstmr.jl --help
+#   julia --project=. scripts/TethysBayesr.jl <config.toml> [options]
+#   julia --project=. scripts/TethysBayesr.jl --config=<config.toml> [options]
+#   julia --project=. scripts/TethysBayesr.jl --help
 # ==============================================================================
 
 [metadata]

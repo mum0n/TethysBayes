@@ -1,8 +1,8 @@
 # ==============================================================================
-# BSTM Test Suite: Multinomial, Categorical & Dirichlet Formulations
+# TethysBayes Test Suite: Multinomial, Categorical & Dirichlet Formulations
 # ==============================================================================
 
-if !@isdefined(bstm_Likelihood)
+if !@isdefined(TethysBayes_Likelihood)
     include(joinpath(@__DIR__, "test_helpers.jl"))
 end
 
@@ -19,7 +19,7 @@ end
             x1 = randn(N_wide)
         )
 
-        m_wide = @bstm(
+        m_wide = @tbm(
             likelihood(c1 + c2 + c3, family=:multinomial) ~ intercept() + fixed(x1),
             df_wide,
             verbose = false
@@ -28,7 +28,7 @@ end
         chn_wide = sample(m_wide, MH(), 50, progress=false)
         @test size(chn_wide, 1) == 50
 
-        res_wide = bstm.model_results_comprehensive(m_wide, chn_wide)
+        res_wide = TethysBayes.model_results_comprehensive(m_wide, chn_wide)
 
         @test haskey(res_wide.predictions, :probabilities)
         @test haskey(res_wide.predictions, :predicted_category)
@@ -55,7 +55,7 @@ end
             temp = randn(30)
         )
 
-        m_cat = @bstm(
+        m_cat = @tbm(
             likelihood(species, family=:categorical, reference="cod") ~
                 intercept() + fixed(temp),
             df_cat,
@@ -65,7 +65,7 @@ end
         chn_cat = sample(m_cat, MH(), 50, progress=false)
         @test size(chn_cat, 1) == 50
 
-        res_cat = bstm.model_results_comprehensive(m_cat, chn_cat)
+        res_cat = TethysBayes.model_results_comprehensive(m_cat, chn_cat)
         @test haskey(res_cat.predictions, :probabilities)
         @test haskey(res_cat.predictions, :predicted_category)
         @test isfinite(res_cat.metrics.waic)
@@ -87,7 +87,7 @@ end
             x1 = randn(N_wide)
         )
 
-        m_dm = @bstm(
+        m_dm = @tbm(
             likelihood(c1 + c2 + c3, family=:dirichlet_multinomial) ~
                 intercept() + fixed(x1),
             df_wide,
@@ -97,7 +97,7 @@ end
         chn_dm = sample(m_dm, MH(), 50, progress=false)
         @test mean(chn_dm[:dirichlet_phi]) > 0.0
 
-        res_dm = bstm.model_results_comprehensive(m_dm, chn_dm)
+        res_dm = TethysBayes.model_results_comprehensive(m_dm, chn_dm)
         @test isfinite(res_dm.metrics.waic)
     end
 
@@ -114,7 +114,7 @@ end
             x1 = randn(20)
         )
 
-        m_dir = @bstm(
+        m_dir = @tbm(
             likelihood(p1 + p2 + p3, family=:dirichlet) ~ intercept() + fixed(x1),
             df_dir,
             verbose = false
@@ -122,7 +122,7 @@ end
 
         chn_dir = sample(m_dir, MH(), 50, progress=false)
         @test mean(chn_dir[:dirichlet_phi]) > 0.0
-        res_dir = bstm.model_results_comprehensive(m_dir, chn_dir)
+        res_dir = TethysBayes.model_results_comprehensive(m_dir, chn_dir)
         @test isfinite(res_dir.metrics.waic)
     end
 end

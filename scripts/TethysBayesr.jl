@@ -1,20 +1,20 @@
 #!/usr/bin/env julia
 # ==============================================================================
-# BSTM Command-Line Interface (CLI) Runner: scripts/bstmr.jl
+# TethysBayes Command-Line Interface (CLI) Runner: scripts/TethysBayesr.jl
 #
 # Parses declarative text configurations (TOML) to instantiate, sample, and
-# persist Bayesian Spatio-Temporal Models (@bstm) to JLD2 or DuckDB.
+# persist Bayesian Spatio-Temporal Models (@tbm) to JLD2 or DuckDB.
 #
 # Usage:
-#   julia --project=. scripts/bstmr.jl <config.toml> [options]
-#   julia --project=. scripts/bstmr.jl --config=<config.toml> [options]
-#   julia --project=. scripts/bstmr.jl --help
+#   julia --project=. scripts/TethysBayesr.jl <config.toml> [options]
+#   julia --project=. scripts/TethysBayesr.jl --config=<config.toml> [options]
+#   julia --project=. scripts/TethysBayesr.jl --help
 # ==============================================================================
 
 import Pkg
 Pkg.activate(normpath(joinpath(@__DIR__, "..")))
 
-using bstm
+using TethysBayes
 using TOML
 using DataFrames
 using Dates
@@ -37,7 +37,7 @@ Prints formatted terminal header with version and usage information.
 """
 function print_cli_banner()
     println("="^80)
-    println("  BSTM CLI Model Runner: bstmr")
+    println("  TethysBayes CLI Model Runner: TethysBayesr")
     println("  Bayesian Spatio-Temporal Modeling & Analytical Persistence Engine")
     println("="^80)
 end
@@ -51,8 +51,8 @@ function print_cli_help()
     print_cli_banner()
     println("""
 Usage:
-  julia --project=. scripts/bstmr.jl <config.toml> [options]
-  julia --project=. scripts/bstmr.jl --config=<config.toml> [options]
+  julia --project=. scripts/TethysBayesr.jl <config.toml> [options]
+  julia --project=. scripts/TethysBayesr.jl --config=<config.toml> [options]
 
 Options:
   -c, --config=<file>     Path to TOML configuration file
@@ -67,8 +67,8 @@ Options:
   -h, --help              Display this help guide and exit
 
 Example:
-  julia --project=. scripts/bstmr.jl scripts/config_bathymetry_rff.toml
-  julia --project=. scripts/bstmr.jl --config=model.toml --format=duckdb
+  julia --project=. scripts/TethysBayesr.jl scripts/config_bathymetry_rff.toml
+  julia --project=. scripts/TethysBayesr.jl --config=model.toml --format=duckdb
 """)
 end
 
@@ -246,7 +246,7 @@ function load_input_dataset(cfg::Dict{String, Any}, config_dir::AbstractString):
         try
             table_name = get(data_cfg, "table", "data")
             sql_query = get(data_cfg, "query", "SELECT * FROM $(table_name)")
-            df = bstm.query_duckdb(data_path, sql_query)
+            df = TethysBayes.query_duckdb(data_path, sql_query)
             println("[Data] Queried DuckDB table with size: ", size(df))
             return df
         catch err
@@ -338,7 +338,7 @@ end
 """
     main()
 
-Entry point for the BSTM command-line interface.
+Entry point for the TethysBayes command-line interface.
 """
 function main()
     cli_args = parse_cli_args(ARGS)
@@ -363,8 +363,8 @@ function main()
 
     # 1. Extract metadata and model configuration
     meta_cfg = get(cfg, "metadata", Dict{String, Any}())
-    model_name = get(meta_cfg, "name", "bstm_model")
-    description = get(meta_cfg, "description", "BSTM Model Execution")
+    model_name = get(meta_cfg, "name", "TethysBayes_model")
+    description = get(meta_cfg, "description", "TethysBayes Model Execution")
     println("[Meta] Model: ", model_name, " | ", description)
 
     model_cfg = get(cfg, "model", Dict{String, Any}())
@@ -414,9 +414,9 @@ function main()
     end
 
     # 6. Model instantiation
-    println("[Model] Instantiating BSTM dynamic model...")
+    println("[Model] Instantiating TethysBayes dynamic model...")
     t_start_inst = time()
-    model = bstm.bstm_core(
+    model = TethysBayes.TethysBayes_core(
         formula_str,
         df;
         verbose = verbose_opt,
@@ -456,7 +456,7 @@ function main()
         t_start_sample = time()
 
         sampler_obj = if sampler_name in ["optimal", "auto", "gibbs"]
-            bstm.get_optimal_sampler(model; adaptation_steps=n_warmup)
+            TethysBayes.get_optimal_sampler(model; adaptation_steps=n_warmup)
         elseif sampler_name == "nuts"
             Turing.NUTS(n_warmup, target_accept)
         elseif sampler_name == "mh"
@@ -465,10 +465,10 @@ function main()
             Turing.HMC(0.05, 10)
         else
             @warn "Unrecognized sampler '$(sampler_name)'. Defaulting to optimal sampler."
-            bstm.get_optimal_sampler(model; adaptation_steps=n_warmup)
+            TethysBayes.get_optimal_sampler(model; adaptation_steps=n_warmup)
         end
 
-        chain = bstm.bstm_sample(
+        chain = TethysBayes.TethysBayes_sample(
             model,
             sampler_obj,
             n_samples;
@@ -478,7 +478,7 @@ function main()
         @printf("[Sampling] MCMC sampling completed in %.2f seconds.\n", t_sample)
 
         println("[Analysis] Computing comprehensive model results...")
-        res = bstm.model_results_comprehensive(model, chain; data=df, au=au_obj)
+        res = TethysBayes.model_results_comprehensive(model, chain; data=df, au=au_obj)
 
         if haskey(res, :metrics)
             m = res.metrics
@@ -520,7 +520,7 @@ function main()
     println("[Output] Persisting model results to: ", resolved_out_path, " (format: ", out_fmt, ")")
 
     if out_fmt == "jld2"
-        saved_file = bstm.save_bstm_model(
+        saved_file = TethysBayes.save_TethysBayes_model(
             resolved_out_path,
             model;
             chain = chain,
@@ -534,7 +534,7 @@ function main()
         if isnothing(res)
             error("Cannot save DuckDB results without posterior samples. Enable `[sampling].sample = true`.")
         end
-        saved_file = bstm.save_bstm_results(
+        saved_file = TethysBayes.save_TethysBayes_results(
             resolved_out_path,
             res;
             model = model,
@@ -550,7 +550,7 @@ function main()
             error("Cannot save complete bundle without posterior samples. Enable `[sampling].sample = true`.")
         end
         base_name = replace(resolved_out_path, r"\.(jld2|duckdb|db)$"i => "")
-        saved_bundle = bstm.save_bstm_bundle(
+        saved_bundle = TethysBayes.save_TethysBayes_bundle(
             base_name,
             model,
             chain,
@@ -559,14 +559,14 @@ function main()
             metadata = meta_cfg,
             compress = compress_opt
         )
-        println("[Output] Successfully saved complete BSTM bundle:")
+        println("[Output] Successfully saved complete TethysBayes bundle:")
         println("  - Model state:  ", saved_bundle.model_file)
         println("  - Results data: ", saved_bundle.duckdb_file)
     else
         error("Unrecognized output format: '$(out_fmt)'. Must be 'jld2', 'duckdb', or 'both'.")
     end
 
-    println("\n[Complete] BSTM CLI execution finished successfully.")
+    println("\n[Complete] TethysBayes CLI execution finished successfully.")
     return 0
 end
 

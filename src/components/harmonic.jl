@@ -1,4 +1,4 @@
-# File: c:\home\jae\projects\bstm\src\components\harmonic.jl
+# File: c:\home\jae\projects\TethysBayes\src\components\harmonic.jl
 """
     Harmonic <: ComponentModel
 

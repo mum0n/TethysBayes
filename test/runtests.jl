@@ -1,5 +1,5 @@
 # ==============================================================================
-# BSTM Comprehensive Test Suite Orchestrator
+# TethysBayes Comprehensive Test Suite Orchestrator
 # ==============================================================================
 
 import Pkg
@@ -116,7 +116,7 @@ end
 
 requested_segments = parse_requested_segments(ARGS)
 
-@testset "BSTM Comprehensive Test Suite" begin
+@testset "TethysBayes Comprehensive Test Suite" begin
     for seg_key in requested_segments
         info = AVAILABLE_SEGMENTS[seg_key]
         println("\n" * "="^80)

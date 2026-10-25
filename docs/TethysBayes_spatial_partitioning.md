@@ -1,9 +1,9 @@
 ---
-title: "BSTM Spatial and Spatiotemporal Partitioning: Methodologies, Mathematics, and Practical Guide"
+title: "TethysBayes Spatial and Spatiotemporal Partitioning: Methodologies, Mathematics, and Practical Guide"
 format: html
 ---
 
-# BSTM Spatial and Spatiotemporal Partitioning: Methodologies, Mathematics, and Practical Guide
+# TethysBayes Spatial and Spatiotemporal Partitioning: Methodologies, Mathematics, and Practical Guide
 
 ## 1. Introduction & Theoretical Motivation
 
@@ -13,7 +13,7 @@ In Bayesian spatiotemporal modeling, spatial processes are typically categorized
 
 While real-world observational data often arrives as continuous geographic coordinates $(s_x, s_y)$ or point observations (e.g., GPS telemetry, sensor networks, epidemiological case reports, ecological surveys), fitting full continuous Gaussian Processes scales with cubic complexity $\mathcal{O}(N^3)$ in the number of observations $N$. Areal GMRF models (like BYM2 and ICAR), in contrast, scale efficiently as $\mathcal{O}(S^{1.5})$ to $\mathcal{O}(S)$ where $S$ is the number of discrete spatial units.
 
-The **`bstm` Partitioning Subsystem** provides an extensible suite of algorithms to discretize continuous 2D spatial domains into discrete areal units $\Omega = \bigcup_{i=1}^S A_i$, construct topological neighborhood adjacency matrices $W \in \mathbb{R}^{S \times S}$, enforce graph connectivity, scale precision matrices for BYM2 models, discretize temporal dimensions, and perform spatial cross-validation.
+The **`TethysBayes` Partitioning Subsystem** provides an extensible suite of algorithms to discretize continuous 2D spatial domains into discrete areal units $\Omega = \bigcup_{i=1}^S A_i$, construct topological neighborhood adjacency matrices $W \in \mathbb{R}^{S \times S}$, enforce graph connectivity, scale precision matrices for BYM2 models, discretize temporal dimensions, and perform spatial cross-validation.
 
 ```
                                ┌────────────────────────────────────────┐
@@ -57,7 +57,7 @@ $$
 
 The collection $\mathcal{V}(C) = \{V_1, V_2, \dots, V_S\}$ forms a convex polygonal partition of $\Omega$. The Delaunay triangulation $\mathcal{D}(C)$ is the planar geometric dual of $\mathcal{V}(C)$: two seeds $c_i$ and $c_j$ share an edge in $\mathcal{D}(C)$ if and only if their Voronoi cells share a boundary segment $\partial V_i \cap \partial V_j \ne \emptyset$.
 
-In `bstm`, all Voronoi polygons are computed via Delaunay triangulation (`DelaunayTriangulation.jl`) and clipped against the domain's convex or buffered hull geometry using `LibGEOS.jl`.
+In `TethysBayes`, all Voronoi polygons are computed via Delaunay triangulation (`DelaunayTriangulation.jl`) and clipped against the domain's convex or buffered hull geometry using `LibGEOS.jl`.
 
 ---
 
@@ -203,7 +203,7 @@ Square or rectangular raster grid partitioning. Given bounding box $[x_{\min}, x
 - Cell width $L_x = \frac{x_{\max} - x_{\min}}{\text{cols}}$
 - Cell height $L_y = L_x \times \text{aspect\_ratio}$
 
-`bstm` implements analytical $\mathcal{O}(N)$ stencil generation for grid adjacency matrices without LibGEOS geometric intersection overhead.
+`TethysBayes` implements analytical $\mathcal{O}(N)$ stencil generation for grid adjacency matrices without LibGEOS geometric intersection overhead.
 
 ---
 
@@ -259,7 +259,7 @@ $$
 s_{\text{scale}} = \exp\left( -\frac{1}{S-1} \sum_{i=1}^{S-1} \log \lambda_i \right)
 $$
 
-In `bstm`, this is evaluated via `scaling_factor_bym2(W)`:
+In `TethysBayes`, this is evaluated via `scaling_factor_bym2(W)`:
 
 ```julia
 scalefactor = scaling_factor_bym2(W)
@@ -269,7 +269,7 @@ scalefactor = scaling_factor_bym2(W)
 
 ### 3.4. Spatial Weighting Transformations (`spatial_weights_matrix`)
 
-`bstm` provides standardized spatial econometric weighting schemes via `spatial_weights_matrix(W; style=...)`:
+`TethysBayes` provides standardized spatial econometric weighting schemes via `spatial_weights_matrix(W; style=...)`:
 
 | Style | Mathematical Definition | Properties & Modeling Implications |
 | :--- | :--- | :--- |
@@ -435,7 +435,7 @@ When polygon boundaries are not required but graph topology is needed for CAR/SA
 ### Example 1: Point Observation Partitioning with Exact Hexagonal Units
 
 ```julia
-using bstm, DataFrames, Random
+using TethysBayes, DataFrames, Random
 
 # 1. Generate synthetic coordinates
 rng = MersenneTwister(42)
@@ -504,7 +504,7 @@ df.s_idx = st_data.s_idx
 df.year_idx = st_data.t_idx
 
 # 3. Fit hierarchical BYM2 + AR1 spatiotemporal model
-m = @bstm(
+m = @tbm(
     likelihood(y, family=poisson) ~
         intercept() +
         random(s_idx, model=bym2) +
@@ -528,7 +528,7 @@ choropleth(st_data.au_spatial.polygons, res.effects.s_idx.structured.mean; title
 
 In multi-tiered ecological and oceanographic workflows, data sources at different physical layers often possess disparate spatial densities and resolutions. For example, substrate grab stations may form an areal graph $G_{\text{src}} = (V_{\text{src}}, W_{\text{src}})$ with $N_{\text{src}} = 25$ units, whereas final population assessments require predictions on a fine-scale management mesh $G_{\text{dest}} = (V_{\text{dest}}, W_{\text{dest}})$ with $N_{\text{dest}} = 80$ units.
 
-The `bstm` partitioning module provides native linear transfer operators $P \in \mathbb{R}^{N_{\text{dest}} \times N_{\text{src}}}$ to map spatial fields seamlessly between arbitrary irregular polygonal tessellations.
+The `TethysBayes` partitioning module provides native linear transfer operators $P \in \mathbb{R}^{N_{\text{dest}} \times N_{\text{src}}}$ to map spatial fields seamlessly between arbitrary irregular polygonal tessellations.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐

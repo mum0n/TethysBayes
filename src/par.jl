@@ -3,7 +3,7 @@
 
 Population Attributable Risk (PAR) and Population Attributable Fraction (PAF)
 computations, counterfactual simulation, and summarization for epidemiological
-models fitted with BSTM.
+models fitted with TethysBayes.
 
 # Mathematical Background
 
@@ -1090,7 +1090,7 @@ or measurement-error (EIV) latent variables. In particular:
   the ratio-of-sums PAF only when every observation has the same baseline risk
   \$\\mu_i\$; with heterogeneous baseline risk it understates the PAF.
 - Pass `weights = mu_i` (the fitted expected outcome per observation, e.g. from
-  `bstm.reconstruct(...).predictions.denoised.mean`) to recover the documented
+  `TethysBayes.reconstruct(...).predictions.denoised.mean`) to recover the documented
   ratio-of-sums form. Pass population/count weights instead to obtain a
   population-attributable fraction.
 - For a fully confounder-adjusted (g-computation) PAF, re-predict each draw from the

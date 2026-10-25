@@ -30,7 +30,7 @@ flexible way to model spatial autocorrelation.
 # Inputs
 - **Required**:
   - A spatial index variable (e.g., `region`) passed to `random()`.
-  - An adjacency matrix `W` passed as a keyword argument to `@bstm`.
+  - An adjacency matrix `W` passed as a keyword argument to `@tbm`.
 - **Optional (in `random()` call)**:
   - `rho`: A `UnivariateDistribution` for the prior on the mixing parameter. Default: `Beta(1,1)`.
   - `sigma`: A `UnivariateDistribution` for the prior on the overall standard deviation.

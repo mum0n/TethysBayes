@@ -2,7 +2,7 @@
     reconstruction.jl
 
 Posterior reconstruction, analytical post-processing, latent field synthesis,
-denoised/noisy point predictions, WAIC computation, and MCMC convergence diagnostics for BSTM.
+denoised/noisy point predictions, WAIC computation, and MCMC convergence diagnostics for TethysBayes.
 
 Version: v1.0.0
 """
@@ -1252,7 +1252,7 @@ end
     _dispersion_or_nothing(v)
 
 The dispersion sentinel: a `NaN` means the model fitted no dispersion parameter, and
-`bstm_Likelihood` expects `nothing` there so each family applies its own documented default
+`TethysBayes_Likelihood` expects `nothing` there so each family applies its own documented default
 (`alpha = 1.0`, `phi = 10.0`, `nu = 5.0`). Passing `NaN` through would reach the kernels as
 `extra_params` and be treated as a real, invalid value.
 """
@@ -1405,14 +1405,14 @@ function _process_ll_and_predictions(
         
         # Explicitly loop to avoid broadcasting issues with keyword arguments.
         # `phi_zi` must carry the -Inf "inactive" sentinel when zero-inflation is off: the
-        # likelihood treats any value > -Inf as an active ZI, and `bstm_Likelihood` rejects
+        # likelihood treats any value > -Inf as an active ZI, and `TethysBayes_Likelihood` rejects
         # ZI together with a hurdle (likelihoods.jl:499-510). Passing 0.0 unconditionally
         # made every hurdle model fail validation.
         if joint_model
             continue
         end
         lik_obj_vec = [
-            bstm_Likelihood(family, eta_samples[i, s];
+            TethysBayes_Likelihood(family, eta_samples[i, s];
                 phi_zi=(use_zi ? phi_zi_s : -Inf),
                 phi_hurdle=phi_hurdle_samples[s, k], r_nb=r_nb_s,
                 sigma_y=y_sigma_s, trial=trials_full[min(i, length(trials_full))],
@@ -1517,7 +1517,7 @@ function _joint_noisy_draws(
         L_s = reshape(L_corr_samples[s, :], outcomes_N, outcomes_N)
         sig_s = collect(y_sigma_samples[s, :])
         for i in 1:N_tot
-            d = bstm_Likelihood(
+            d = TethysBayes_Likelihood(
                 :mvnormal, collect(view(eta_post, i, s, :));
                 sigma_y=sig_s,
                 extra_params=Dict(:correlation_cholesky => L_s)
@@ -1980,7 +1980,7 @@ Point predictions and intervals are derived by evaluating the inverse link funct
 
 ### Arguments
 - `chain`: MCMC sample collection (e.g., Turing `Chains` or `VNChain`).
-- `M`: Model configuration `NamedTuple` (from `bstm_config` or `bstm_core`) or `DynamicPPL.Model`.
+- `M`: Model configuration `NamedTuple` (from `TethysBayes_config` or `TethysBayes_core`) or `DynamicPPL.Model`.
 - `alpha::Float64`: Significance level for \$(1 - \\alpha)\$ credible intervals (default `0.05`).
 - `PS`: Optional prediction set `NamedTuple` for out-of-sample synthesis (default `nothing`).
 
@@ -2451,7 +2451,7 @@ function _generate_conditional_predictions(
     end
 
 
-    # --- Standard BSTM Conditional Predictions ---
+    # --- Standard TethysBayes Conditional Predictions ---
     if !hasproperty(M, :data) || isnothing(M.data) || !hasproperty(M.data, target_cov)
         return nothing
     end
@@ -2540,7 +2540,7 @@ function _prepare_prediction_inputs(M_train, new_data::DataFrame)::NamedTuple
 
     # 2. Re-create fixed effects design matrix for the new data
     if haskey(M_train, :formula)
-        decomposed_formula = decompose_bstm_formula(M_train.formula, M_train.data)
+        decomposed_formula = decompose_TethysBayes_formula(M_train.formula, M_train.data)
         
         fixed_effects_vars = String[]
         append!(fixed_effects_vars, decomposed_formula.fixed_effects)
@@ -2653,16 +2653,16 @@ function _prepare_prediction_inputs(M_train, new_data::DataFrame)::NamedTuple
                 local_kwargs = Dict(spec.params)
 
                 B_matrix, _ = if n_vars == 1 
-                    bstm_smooth_basis_1D(model_type_str, new_data[!, Symbol(vars[1])], nb;
+                    TethysBayes_smooth_basis_1D(model_type_str, new_data[!, Symbol(vars[1])], nb;
                         local_kwargs...)
                 elseif n_vars > 1
                     coords_new = Matrix{Float64}(new_data[!, Symbol.(vars)])
                     B_matrix_raw = if n_vars == 2
-                        bstm_smooth_basis_2D(model_type_str, coords_new, nb; local_kwargs...)
+                        TethysBayes_smooth_basis_2D(model_type_str, coords_new, nb; local_kwargs...)
                     elseif n_vars == 3
-                        bstm_smooth_basis_3D(model_type_str, coords_new, nb; local_kwargs...)
+                        TethysBayes_smooth_basis_3D(model_type_str, coords_new, nb; local_kwargs...)
                     elseif n_vars == 4
-                        bstm_smooth_basis_4D(model_type_str, coords_new, nb; local_kwargs...)
+                        TethysBayes_smooth_basis_4D(model_type_str, coords_new, nb; local_kwargs...)
                     else
                         error("Smoothers with more than 4 dimensions are not supported for prediction.")
                     end
@@ -2684,7 +2684,7 @@ function _prepare_prediction_inputs(M_train, new_data::DataFrame)::NamedTuple
             sub_PS_dict[:y_N] = nrow(new_data)
 
             if haskey(sub_M, :formula)
-                sub_decomposed = decompose_bstm_formula(sub_M.formula, sub_M.data) 
+                sub_decomposed = decompose_TethysBayes_formula(sub_M.formula, sub_M.data) 
                 sub_fixed_effects_vars = String[]
                 append!(sub_fixed_effects_vars, sub_decomposed.fixed_effects)
                 for (_, mod_data_nt) in sub_decomposed.modules
@@ -2740,7 +2740,7 @@ end
     predict(model_obj::DynamicPPL.Model, chain, new_data::DataFrame; n_samples::Int=100,
       alpha=0.05)
 
-The primary engine for projecting a fitted `bstm` model onto a new dataset to
+The primary engine for projecting a fitted `TethysBayes` model onto a new dataset to
 generate out-of-sample predictions.
 
 # Version
@@ -2823,9 +2823,9 @@ end
 
 
 """
-    bstm_cv_orchestrator(formula::String, data::DataFrame; ...)
+    TethysBayes_cv_orchestrator(formula::String, data::DataFrame; ...)
 
-An orchestration utility for performing cross-validation on `bstm` models. It
+An orchestration utility for performing cross-validation on `TethysBayes` models. It
 supports several strategies designed to handle the dependent nature of
 spatiotemporal data.
 
@@ -2833,7 +2833,7 @@ spatiotemporal data.
 v1.0.0
 
 # Arguments
-- `formula::String`: The `bstm` model formula.
+- `formula::String`: The `TethysBayes` model formula.
 - `data::DataFrame`: The full dataset.
 - `method::Symbol`: The CV strategy to use. Default: `:kfold`.
 - `cv_var::Symbol`: The column in `data` used for grouping/blocking. Default: `:s_idx`.
@@ -2843,7 +2843,7 @@ v1.0.0
 - `alpha::Float64`: The significance level for credible intervals in prediction. Default: `0.05`.
 - `cv_space_vars::Vector{Symbol}`: Coordinate columns for `:spatial_block`. Default: `[:s_x,
   :s_y]`.
-- `kwargs...`: Additional keyword arguments passed to the underlying `bstm_core` call.
+- `kwargs...`: Additional keyword arguments passed to the underlying `TethysBayes_core` call.
 
 # Returns
 - A `NamedTuple` containing:
@@ -2854,7 +2854,7 @@ v1.0.0
   - `method`: The CV method used.
   - `n_folds`: The number of folds executed.
 """ 
-function bstm_cv_orchestrator(
+function TethysBayes_cv_orchestrator(
     formula::String,
     data::DataFrame;
     method::Symbol = :kfold,
@@ -2868,7 +2868,7 @@ function bstm_cv_orchestrator(
 )
     
     
-    meta_discovery = decompose_bstm_formula(formula, data)
+    meta_discovery = decompose_TethysBayes_formula(formula, data)
     response_name = !isnothing(meta_discovery) && !isempty(meta_discovery.outcomes) ? Symbol(meta_discovery.outcomes[1][:var]) : (hasproperty(data, :recapture) ? :recapture : :y)
     
     folds_indices = Vector{Vector{Int}}()
@@ -2987,7 +2987,7 @@ function bstm_cv_orchestrator(
         cv_kwargs = Dict{Symbol, Any}(pairs(kwargs))
         cv_kwargs[:verbose] = false
         
-        model_train = bstm_core(formula, train_data; cv_kwargs...)
+        model_train = TethysBayes_core(formula, train_data; cv_kwargs...)
         chain_train = Base.invokelatest(sample, model_train, sampler, n_samples; progress=false)
         fit_obj = model_train
 
@@ -3014,7 +3014,7 @@ end
 
 
 """
-    bstm_loo(model_obj::DynamicPPL.Model, chain; alpha=0.05)
+    TethysBayes_loo(model_obj::DynamicPPL.Model, chain; alpha=0.05)
 
 A utility for performing Leave-One-Out Cross-Validation using Pareto Smoothed
 Importance Sampling (PSIS-LOO) to assess a model's out-of-sample predictive accuracy.
@@ -3035,7 +3035,7 @@ v1.0.0
   - `log_likelihood`: The original `[n_obs, n_samples]` log-likelihood matrix.
   - `pareto_k`: A vector of the Pareto-k diagnostic values for each observation.
 """ 
-function bstm_loo(model_obj::DynamicPPL.Model, chain; alpha=0.05)
+function TethysBayes_loo(model_obj::DynamicPPL.Model, chain; alpha=0.05)
     M = model_obj.args.M
     raw_arch = get(M, :model_arch, "univariate")
     arch_type = if raw_arch == "univariate"
@@ -3061,11 +3061,11 @@ function bstm_loo(model_obj::DynamicPPL.Model, chain; alpha=0.05)
     try
         loo_result = loo(Matrix(log_lik'))
     catch e
-        @error "BSTM Selection Error: PSIS-LOO calculation failed. Error: " * string(e)
+        @error "TethysBayes Selection Error: PSIS-LOO calculation failed. Error: " * string(e)
         return nothing
     end
 
-    println("\n--- BSTM Model Selection Report ---")
+    println("\n--- TethysBayes Model Selection Report ---")
     println("Expected Log Pointwise Predictive Density (ELPD): ", round(loo_result.estimates[:elpd_loo, :estimate], digits=2))
     println("Effective Number of Parameters (p_loo):          ", round(loo_result.estimates[:p_loo, :estimate], digits=2))
     println("LOO Information Criterion:                       ", round(loo_result.estimates[:looic, :estimate], digits=2))
@@ -3073,7 +3073,7 @@ function bstm_loo(model_obj::DynamicPPL.Model, chain; alpha=0.05)
     pareto_k = loo_result.pointwise[:pareto_k]
     influential_count = count(x -> x > 0.7, pareto_k)
     if influential_count > 0
-        @warn "BSTM: " * string(influential_count) * " influential observations detected (Pareto k > 0.7)."
+        @warn "TethysBayes: " * string(influential_count) * " influential observations detected (Pareto k > 0.7)."
     end
 
     return (
@@ -3092,19 +3092,19 @@ end
 """
     compare_models(loo_a_report, loo_b_report; model_names=["Model_A", "Model_B"])
 
-A utility for formal model comparison between two fitted `bstm` models. It uses
+A utility for formal model comparison between two fitted `TethysBayes` models. It uses
 their PSIS-LOO results to compute the difference in Expected Log Pointwise
 Predictive Density (ELPD) and provides a statistical basis for model selection.
 
 # Arguments
-- `loo_a_report`, `loo_b_report`: The output `NamedTuple` from `bstm_loo` for each model.
+- `loo_a_report`, `loo_b_report`: The output `NamedTuple` from `TethysBayes_loo` for each model.
 - `model_names`: A vector of strings with names for the models being compared.
 
 # Returns
 - A `NamedTuple` containing the comparison table, ELPD difference, and the original LOO objects.
 """
 function compare_models(loo_a_report, loo_b_report; model_names=["Model_A", "Model_B"])
-    println("--- Starting BSTM Model Comparison ---")
+    println("--- Starting TethysBayes Model Comparison ---")
 
     # 1. LOO Object Extraction
     loo_a = loo_a_report.loo_obj
@@ -3115,7 +3115,7 @@ function compare_models(loo_a_report, loo_b_report; model_names=["Model_A", "Mod
     try
         comparison_stats = compare([loo_a, loo_b])
     catch e
-        @error "BSTM Comparison Error: Selection suite failed. Error: " * string(e)
+        @error "TethysBayes Comparison Error: Selection suite failed. Error: " * string(e)
         return nothing
     end
 
@@ -3126,7 +3126,7 @@ function compare_models(loo_a_report, loo_b_report; model_names=["Model_A", "Mod
     elpd_b = loo_b_report.metrics.elpd
 
     # 4. Report Generation
-    println("\n--- BSTM Model Selection Registry ---")
+    println("\n--- TethysBayes Model Selection Registry ---")
     println("Model A (", model_names[1], "): ELPD = ", round(elpd_a, digits=2), " | p_loo = ",
         round(p_loo_a, digits=2))
     println("Model B (", model_names[2], "): ELPD = ", round(elpd_b, digits=2), " | p_loo = ",

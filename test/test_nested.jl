@@ -1,5 +1,5 @@
 # ==============================================================================
-# BSTM Test Suite: Nested Multi-Fidelity Models & Sub-Model Linkage Architecture
+# TethysBayes Test Suite: Nested Multi-Fidelity Models & Sub-Model Linkage Architecture
 # ==============================================================================
 # Verifies the nested() module interface, recursive configuration isolation,
 # parameter registry compilation, Turing model AST linear predictor coupling,
@@ -15,7 +15,7 @@
 #     rho_sub ~ Normal(1.0, 0.5)
 # ==============================================================================
 
-if !@isdefined(bstm_Likelihood)
+if !@isdefined(TethysBayes_Likelihood)
     include(joinpath(@__DIR__, "test_helpers.jl"))
 end
 
@@ -39,7 +39,7 @@ end
     )
 
     @testset "Sub-Config Keyword Isolation & Assembly" begin
-        cfg = bstm.bstm_config(
+        cfg = TethysBayes.TethysBayes_config(
             "likelihood(y_hi) ~ 1 + fixed(x) + " *
             "nested(proxy, formula=\"likelihood(y_lo) ~ 1 + fixed(x)\", data_source=:low_data)",
             data_hi;
@@ -65,7 +65,7 @@ end
             x = randn(35)
         )
 
-        @test_throws ArgumentError bstm.bstm_config(
+        @test_throws ArgumentError TethysBayes.TethysBayes_config(
             "likelihood(y_hi) ~ 1 + " *
             "nested(proxy, formula=\"likelihood(y_lo) ~ 1\", data_source=:low_data)",
             data_hi;
@@ -76,7 +76,7 @@ end
         data_hi_mapped = copy(data_hi)
         data_hi_mapped[!, :lo_idx] = rand(1:35, n_hi)
 
-        cfg_col_map = bstm.bstm_config(
+        cfg_col_map = TethysBayes.TethysBayes_config(
             "likelihood(y_hi) ~ 1 + " *
             "nested(proxy, formula=\"likelihood(y_lo) ~ 1\", " *
             "data_source=:low_data, mapping=:lo_idx)",
@@ -89,7 +89,7 @@ end
 
         # 3. Valid mapping via explicit vector
         explicit_idx = rand(1:35, n_hi)
-        cfg_vec_map = bstm.bstm_config(
+        cfg_vec_map = TethysBayes.TethysBayes_config(
             "likelihood(y_hi) ~ 1 + " *
             "nested(proxy, formula=\"likelihood(y_lo) ~ 1\", " *
             "data_source=:low_data, mapping=explicit_idx)",
@@ -102,7 +102,7 @@ end
         # 4. Out-of-bounds mapping index must raise BoundsError
         invalid_bounds_idx = copy(explicit_idx)
         invalid_bounds_idx[1] = 999  # Exceeds sub_N = 35
-        @test_throws BoundsError bstm.bstm_config(
+        @test_throws BoundsError TethysBayes.TethysBayes_config(
             "likelihood(y_hi) ~ 1 + " *
             "nested(proxy, formula=\"likelihood(y_lo) ~ 1\", " *
             "data_source=:low_data, mapping=invalid_bounds_idx)",
@@ -113,7 +113,7 @@ end
 
         # 5. Mapping length mismatch must raise DimensionMismatch
         short_idx = explicit_idx[1:10]
-        @test_throws DimensionMismatch bstm.bstm_config(
+        @test_throws DimensionMismatch TethysBayes.TethysBayes_config(
             "likelihood(y_hi) ~ 1 + " *
             "nested(proxy, formula=\"likelihood(y_lo) ~ 1\", " *
             "data_source=:low_data, mapping=short_idx)",
@@ -124,13 +124,13 @@ end
     end
 
     @testset "ParamRegistry Integration & Prefixed Namespaces" begin
-        cfg = bstm.bstm_config(
+        cfg = TethysBayes.TethysBayes_config(
             "likelihood(y_hi) ~ 1 + fixed(x) + " *
             "nested(proxy, formula=\"likelihood(y_lo) ~ 1 + fixed(x)\", data_source=:low_data)",
             data_hi;
             low_data = data_lo
         )
-        reg = bstm.build_param_registry(cfg)
+        reg = TethysBayes.build_param_registry(cfg)
 
         # Main model descriptors
         @test haskey(reg.descriptors, :intercept)
@@ -150,20 +150,20 @@ end
         @test haskey(reg.descriptors, :y_sigma_proxy)
 
         # Role-based query
-        nested_weights = bstm.get_descriptors_by_role(reg, :nested_weight)
+        nested_weights = TethysBayes.get_descriptors_by_role(reg, :nested_weight)
         @test length(nested_weights) == 1
         @test nested_weights[1].symbol == :rho_nested_proxy
     end
 
     @testset "Turing Model Code Generation & Predictor Coupling" begin
-        cfg = bstm.bstm_config(
+        cfg = TethysBayes.TethysBayes_config(
             "likelihood(y_hi) ~ 1 + fixed(x) + " *
             "nested(proxy, formula=\"likelihood(y_lo) ~ 1 + fixed(x)\", data_source=:low_data)",
             data_hi;
             low_data = data_lo
         )
 
-        code_str, _, _ = bstm.bstm_text_assembler(cfg, :test_nested_model)
+        code_str, _, _ = TethysBayes.TethysBayes_text_assembler(cfg, :test_nested_model)
 
         # Sub-model weight and priors.
         # NOTE: these are emitted as plain `name ~ dist` statements; the legacy
@@ -186,7 +186,7 @@ end
     end
 
     @testset "End-to-End Prior Sampling & Posterior Reconstruction" begin
-        model = @bstm(
+        model = @tbm(
             likelihood(y_hi) ~ 1 + fixed(x) +
             nested(proxy, formula="likelihood(y_lo) ~ 1 + fixed(x)", data_source=:low_data),
             data_hi,
@@ -198,21 +198,21 @@ end
         @test size(chain, 1) == n_draws
 
         # Parameter samples extraction
-        rho_samples = bstm.get_samples(chain, :rho_nested_proxy)
+        rho_samples = TethysBayes.get_samples(chain, :rho_nested_proxy)
         @test length(rho_samples) == n_draws
         @test all(isfinite, rho_samples)
 
-        beta_proxy_samples = bstm.get_samples(chain, :beta_proxy)
+        beta_proxy_samples = TethysBayes.get_samples(chain, :beta_proxy)
         @test length(beta_proxy_samples) == n_draws
 
         # Full reconstruction
-        cfg = bstm.bstm_config(
+        cfg = TethysBayes.TethysBayes_config(
             "likelihood(y_hi) ~ 1 + fixed(x) + " *
             "nested(proxy, formula=\"likelihood(y_lo) ~ 1 + fixed(x)\", data_source=:low_data)",
             data_hi;
             low_data = data_lo
         )
-        res = bstm.reconstruct(chain, cfg)
+        res = TethysBayes.reconstruct(chain, cfg)
 
         @test haskey(res, :predictions_denoised)
         @test haskey(res, :predictions_noisy)
@@ -223,8 +223,8 @@ end
     end
 
     @testset "Alternative 2: Declarative Paired Multi-Equation Syntax" begin
-        # 1. bstm_config with paired specifications
-        cfg_paired = bstm.bstm_config(
+        # 1. TethysBayes_config with paired specifications
+        cfg_paired = TethysBayes.TethysBayes_config(
             :primary => (
                 formula = "likelihood(y_hi) ~ 1 + fixed(x) + transfer(:proxy)",
                 data    = data_hi
@@ -240,12 +240,12 @@ end
         @test cfg_paired.nested_components[:proxy].coupling_prior == Normal(0.0, 1.0)
 
         # 2. ParamRegistry reflects custom coupling prior
-        reg_paired = bstm.build_param_registry(cfg_paired)
+        reg_paired = TethysBayes.build_param_registry(cfg_paired)
         @test haskey(reg_paired.descriptors, :rho_nested_proxy)
         @test reg_paired.descriptors[:rho_nested_proxy].prior == Normal(0.0, 1.0)
 
-        # 3. Model instantiation with @bstm macro using unquoted paired expressions
-        model_paired = @bstm(
+        # 3. Model instantiation with @tbm macro using unquoted paired expressions
+        model_paired = @tbm(
             :primary => (
                 formula = likelihood(y_hi) ~ 1 + fixed(x) + transfer(:proxy),
                 data    = data_hi
@@ -264,7 +264,7 @@ end
         @test any(k -> occursin("beta_proxy", string(k)), keys(chain_paired))
 
         # 4. Reconstruction with transfer_results
-        res_paired = bstm.reconstruct(chain_paired, cfg_paired)
+        res_paired = TethysBayes.reconstruct(chain_paired, cfg_paired)
         @test haskey(res_paired, :transfer_results)
         @test haskey(res_paired.transfer_results, :proxy)
         @test length(res_paired.predictions_denoised.mean) == n_hi
@@ -274,7 +274,7 @@ end
         data_hi_map = copy(data_hi)
         data_hi_map[!, :lo_idx] = rand(1:30, n_hi)
 
-        cfg_map_paired = bstm.bstm_config(
+        cfg_map_paired = TethysBayes.TethysBayes_config(
             :primary => (
                 formula = "likelihood(y_hi) ~ 1 + transfer(:proxy)",
                 data    = data_hi_map
@@ -313,12 +313,12 @@ end
         )
 
         # 1. Multi-Strata Factorial Resolution
-        res_single = bstm._resolve_nested_strata(data_hi_enh, :region)
+        res_single = TethysBayes._resolve_nested_strata(data_hi_enh, :region)
         @test res_single.n_strata == 3
         @test length(res_single.strata_levels) == 3
         @test length(res_single.strata_indices) == n_tier
 
-        res_multi = bstm._resolve_nested_strata(
+        res_multi = TethysBayes._resolve_nested_strata(
             data_hi_enh, [:region, :depth_stratum]
         )
         @test res_multi.n_strata == 6
@@ -329,7 +329,7 @@ end
         @test length(res_multi.factor_indices[:region]) == n_tier
 
         # 2. Coupling Modes & ParamRegistry
-        cfg_mult = bstm.bstm_config(
+        cfg_mult = TethysBayes.TethysBayes_config(
             :primary => (
                 formula = "likelihood(y_hi) ~ 1 + fixed(x) + transfer(:proxy)",
                 data = data_hi_enh
@@ -342,7 +342,7 @@ end
         )
         @test cfg_mult.nested_components[:proxy].coupling == :multiplicative
 
-        cfg_mod = bstm.bstm_config(
+        cfg_mod = TethysBayes.TethysBayes_config(
             :primary => (
                 formula = "likelihood(y_hi) ~ 1 + fixed(x) + transfer(:proxy)",
                 data = data_hi_enh
@@ -354,11 +354,11 @@ end
                 moderator = :temp
             )
         )
-        reg_mod = bstm.build_param_registry(cfg_mod)
+        reg_mod = TethysBayes.build_param_registry(cfg_mod)
         @test haskey(reg_mod.descriptors, :rho_nested_proxy_0)
         @test haskey(reg_mod.descriptors, :rho_nested_proxy_1)
 
-        cfg_tensor = bstm.bstm_config(
+        cfg_tensor = TethysBayes.TethysBayes_config(
             :primary => (
                 formula = "likelihood(y_hi) ~ 1 + fixed(x) + transfer(:proxy)",
                 data = data_hi_enh
@@ -370,14 +370,14 @@ end
                 strata = [:region, :depth_stratum]
             )
         )
-        reg_tensor = bstm.build_param_registry(cfg_tensor)
+        reg_tensor = TethysBayes.build_param_registry(cfg_tensor)
         @test haskey(reg_tensor.descriptors, :rho_nested_proxy_region)
         @test haskey(reg_tensor.descriptors, :rho_nested_proxy_depth_stratum)
         @test reg_tensor.descriptors[:rho_nested_proxy_region].shape == (3,)
         @test reg_tensor.descriptors[:rho_nested_proxy_depth_stratum].shape == (2,)
 
         # 3. Hierarchical 3-Tier Cascading Assembly
-        cfg_3tier = bstm.bstm_config(
+        cfg_3tier = TethysBayes.TethysBayes_config(
             :primary => (
                 formula = "likelihood(y_hi) ~ 1 + fixed(x) + transfer(:mid)",
                 data = data_hi_enh
@@ -394,12 +394,12 @@ end
         @test haskey(cfg_3tier.nested_components, :mid)
         @test haskey(cfg_3tier.nested_components[:mid].nested_components, :coarse)
 
-        reg_3tier = bstm.build_param_registry(cfg_3tier)
+        reg_3tier = TethysBayes.build_param_registry(cfg_3tier)
         @test haskey(reg_3tier.descriptors, :rho_nested_mid)
         @test haskey(reg_3tier.descriptors, :rho_nested_mid_coarse)
         @test haskey(reg_3tier.descriptors, :intercept_mid_coarse)
 
-        code_3tier, _, _ = bstm.bstm_text_assembler(cfg_3tier, :model_3tier)
+        code_3tier, _, _ = TethysBayes.TethysBayes_text_assembler(cfg_3tier, :model_3tier)
         @test occursin("rho_nested_mid ~", code_3tier)
         @test occursin("rho_nested_mid_coarse ~", code_3tier)
         @test occursin("eta_sub_mid_coarse", code_3tier)
@@ -407,7 +407,7 @@ end
         @test occursin("eta = eta .+ rho_nested_mid .* eta_sub_mid", code_3tier)
 
         # 4. End-to-End Prior Sampling & Reconstruction
-        model_3tier = @bstm(
+        model_3tier = @tbm(
             :primary => (
                 formula = likelihood(y_hi) ~ 1 + fixed(x) + transfer(:mid),
                 data = data_hi_enh
@@ -422,7 +422,7 @@ end
             )
         )
         chain_3tier = sample(model_3tier, Prior(), 5, progress=false)
-        res_3tier = bstm.reconstruct(chain_3tier, cfg_3tier)
+        res_3tier = TethysBayes.reconstruct(chain_3tier, cfg_3tier)
         @test all(isfinite, res_3tier.predictions_denoised.mean)
         @test haskey(res_3tier.transfer_results, :mid)
         @test haskey(res_3tier.transfer_results[:mid].transfer_results, :coarse)

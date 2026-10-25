@@ -90,7 +90,7 @@ function get_precomputes(m::PSpline, M::NamedTuple, mod_data::Dict)::NamedTuple
               "consider `tps` or creating tensor products manually."
     end
 
-    B, actual_nbins = bstm_bspline_basis(coords[:, 1], m.nbins, m.degree)
+    B, actual_nbins = TethysBayes_bspline_basis(coords[:, 1], m.nbins, m.degree)
     n_latent = actual_nbins
 
     penalty_type = m.penalty_order == 1 ? :rw1 : :rw2
@@ -308,8 +308,8 @@ function get_effects(
     B_full = if !isnothing(PS) && hasproperty(PS.data, coord_var_sym)
         coords_pred_cpu = PS.data[!, coord_var_sym]
         
-        # bstm_bspline_basis is CPU-only
-        B_pred, _ = bstm_bspline_basis(coords_pred_cpu, m.nbins, m.degree)
+        # TethysBayes_bspline_basis is CPU-only
+        B_pred, _ = TethysBayes_bspline_basis(coords_pred_cpu, m.nbins, m.degree)
         vcat(B_train, B_pred)
     else
         B_train

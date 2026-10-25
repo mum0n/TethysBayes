@@ -146,8 +146,8 @@ function get_priors(m::Warp, spec::NamedTuple, arch::String, outcome_idx, M)::St
     key = spec.key
     # `spec_registry` is a name that exists only inside the generated model body, where the
     # model receives it as an argument. Referencing it from `get_priors`/`get_updates` --
-    # which run in `bstm`'s own scope -- raised
-    # `UndefVarError: spec_registry not defined in bstm`, so `warp` could not be built at
+    # which run in `TethysBayes`'s own scope -- raised
+    # `UndefVarError: spec_registry not defined in TethysBayes`, so `warp` could not be built at
     # all. The value lives on `spec` directly.
     in_dims = spec.hyper.in_dims
     n_features = m.n_features
@@ -231,8 +231,8 @@ function get_updates(m::Warp, spec::NamedTuple, arch::String, outcome_idx, M)::S
     key = spec.key
     # `spec_registry` is a name that exists only inside the generated model body, where the
     # model receives it as an argument. Referencing it from `get_priors`/`get_updates` --
-    # which run in `bstm`'s own scope -- raised
-    # `UndefVarError: spec_registry not defined in bstm`, so `warp` could not be built at
+    # which run in `TethysBayes`'s own scope -- raised
+    # `UndefVarError: spec_registry not defined in TethysBayes`, so `warp` could not be built at
     # all. The value lives on `spec` directly.
     in_dims = spec.hyper.in_dims
     n_features = m.n_features

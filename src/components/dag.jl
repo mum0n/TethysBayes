@@ -30,7 +30,7 @@ precision matrix is \$Q = (I - \\rho W)^T (I - \\rho W) / \\sigma^2\$.
 # Inputs
 - **Required**:
   - A spatial index variable (e.g., `s_idx`).
-  - An adjacency matrix `W` passed as a keyword argument to `@bstm`.
+  - An adjacency matrix `W` passed as a keyword argument to `@tbm`.
 - **Optional (in `random()` call)**:
   - `rho`: `UnivariateDistribution`, prior for the autoregressive parameter. Default:
     `Normal(0, 0.5)`.

@@ -1,13 +1,13 @@
-# bstm: Bayesian Spatiotemporal Models in Julia
+# TethysBayes: Bayesian Spatiotemporal Models in Julia
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Julia 1.10+](https://img.shields.io/badge/Julia-1.10+-blue.svg)](https://julialang.org)
 [![Turing.jl](https://img.shields.io/badge/Powered%20By-Turing.jl-purple.svg)](https://turinglang.org)
 [![DuckDB](https://img.shields.io/badge/Analytics-DuckDB-yellow.svg)](https://duckdb.org)
 
-The **`bstm`** framework provides a composable, formula-driven probabilistic programming interface for hierarchical Bayesian spatiotemporal modeling in Julia. Built on top of **Turing.jl** and Julia's stellar scientific computing ecosystem, `bstm` separates observation likelihood specifications from latent process dynamics. This separation allows researchers to flexibly assemble spatial, temporal, non-linear, and mechanistic differential components into an integrated, differentiable probabilistic model.
+The **`TethysBayes`** framework provides a composable, formula-driven probabilistic programming interface for hierarchical Bayesian spatiotemporal modeling in Julia. Built on top of **Turing.jl** and Julia's stellar scientific computing ecosystem, `TethysBayes` separates observation likelihood specifications from latent process dynamics. This separation allows researchers to flexibly assemble spatial, temporal, non-linear, and mechanistic differential components into an integrated, differentiable probabilistic model.
 
-Inspired by high-level formula interfaces like R's `brms` and `INLA`, `bstm` and learning from `bugs`, `jags` and `stan`, it provides automated code generation, automatic differentiation (ForwardDiff, ReverseDiff, Zygote), adaptive composite block-sampling, full posterior reconstruction, spatial tessellation, analytical SQL querying, and publication-ready diagnostic visualization. It represents the evolution of the  `aegis`-based approach and workflow implemented in R (https://github.com/jae0/aegis, https://github.com/jae0/carstm, and https://github.com/jae0/bio.snowcrab) to embrace Julia's performance, ecosystem and extensibility. It is designed to make complex ecological modeling faster, more flexible, transparent and accessible to scientists, in the spirit and ideals of open and reproducible science. It is limited by my own human limits knowledge and experience, and so I look forward to other scientists running with it to make something truly great! 
+Inspired by high-level formula interfaces like R's `brms` and `INLA`, `TethysBayes` and learning from `bugs`, `jags` and `stan`, it provides automated code generation, automatic differentiation (ForwardDiff, ReverseDiff, Zygote), adaptive composite block-sampling, full posterior reconstruction, spatial tessellation, analytical SQL querying, and publication-ready diagnostic visualization. It represents the evolution of the  `aegis`-based approach and workflow implemented in R (https://github.com/jae0/aegis, https://github.com/jae0/carstm, and https://github.com/jae0/bio.snowcrab) to embrace Julia's performance, ecosystem and extensibility. It is designed to make complex ecological modeling faster, more flexible, transparent and accessible to scientists, in the spirit and ideals of open and reproducible science. It is limited by my own human limits knowledge and experience, and so I look forward to other scientists running with it to make something truly great! 
 
 Full disclosure: I have made heavy use of Gemini AI to help develop this package. It has been an invaluable catalyst to make coherent the code, unit tests, visualizations and consistent documentation. 
 
@@ -17,11 +17,11 @@ Jae
 
 ## What it looks like
 
-By design, this should look familiar and comprehensible to most people. All that is required for a user is to define a likelihood and any latent processes. The rest is handled by `bstm` and you have a full hierarchical Bayesian model! You can take the generated Turing.jl model and alter it by adding any custom components you desire! Then use the best inference method available, such as cutting edge Variational inference methods, or MCMC methods (NUTS, HMC, etc.) to estimate the features you are interested in. 
+By design, this should look familiar and comprehensible to most people. All that is required for a user is to define a likelihood and any latent processes. The rest is handled by `TethysBayes` and you have a full hierarchical Bayesian model! You can take the generated Turing.jl model and alter it by adding any custom components you desire! Then use the best inference method available, such as cutting edge Variational inference methods, or MCMC methods (NUTS, HMC, etc.) to estimate the features you are interested in. 
 
 ```julia
 
-m = @bstm(
+m = @tbm(
     likelihood(y, family=poisson) ~
         intercept() +
         fixed(elevation) +
@@ -36,7 +36,7 @@ m = @bstm(
 
 ## Key Features
 
-- **Intuitive Formula DSL (`@bstm`)**:
+- **Intuitive Formula DSL (`@tbm`)**:
   Declarative formula syntax separating observation likelihoods (`likelihood(y, family=...)`) on the LHS from latent processes (`intercept() + fixed() + random()`) on the RHS.
 - **Rich Latent Component Library (50+ Components)**:
   - **Discrete Spatial GMRFs**: `BYM2` (Besag-York-Mollié with spectral scaling), `ICAR`, `Besag`, `Leroux`, `MCAR` (Multivariate Conditional Autoregressive), `SAR` (Simultaneous Autoregressive), `LocalAdaptive` (cluster-specific regime shifts), and `BCGN`.
@@ -48,7 +48,7 @@ m = @bstm(
   - **Kronecker Interaction (`⊗`)**: Models non-separable space-time interactions (Knorr-Held Types I–IV, $Q_{st} = Q_t \otimes Q_s$).
   - **Pipe Operator (`|>`)**: Constructs Spatially-Varying Coefficients (SVC) and spatially-varying temporal curves (e.g. `covariate |> random(s_idx, model=icar)`).
   - **Composition (`∘`)**: Links intensity fields to point processes (e.g. Log-Gaussian Cox Processes `LGCP`).
-- **Comprehensive Spatial Partitioning Subsystem** (provided by the [`GeoPartitioning`](../GeoPartitioning) package, re-exported here):
+- **Comprehensive Spatial Partitioning Subsystem** (provided by the [`Tethys`](../Tethys) partitioning subsystem, re-exported here):
   - 9 automated spatial discretization algorithms: `:hexagonal` (honeycomb packing), `:cvt` (Lloyd's centroidal relaxation), `:kvt` (K-means density balancing), `:qvt`, `:bvt`, `:hvt`, `:avt`, `:lattice` (fast raster), and spring-layout coordinate inference.
   - Granular sizing and polygon count controls: `target_units`, `exact_units`, `target_area`, `min_area`, `merge_small_polygons`, `prune_empty`, and KD-tree island bridging (`ensure_connected!`).
   - Joint space-time synchronization: `assign_spatiotemporal_units` ($st = (t-1)S + s$).
@@ -62,16 +62,16 @@ m = @bstm(
   - **Tier 2 (DuckDB)**: Embedded relational SQL database storing normalized metrics, parameter statistics, predictions, WKT spatial geometries, and diagnostic plot data for zero-copy querying, multi-model Bayesian Model Averaging (BMA), sequential prior extraction, and CSV/GeoJSON export.
 - **Diagnostics, Post-Processing & Visualization (`src/plotting.jl`)**:
   One-line extraction of posterior credible intervals, predictive error metrics (RMSE, $R^2$, DIC, WAIC), spatial choropleth maps (`choropleth`), spatial adjacency graphs (`spatial_graph_plot`), animal movement paths (`render_paths!`), and timeseries ribbons (`timeseries_ci`).
-- **Spatial Block Cross-Validation (`bstm_cv_orchestrator`)**:
+- **Spatial Block Cross-Validation (`TethysBayes_cv_orchestrator`)**:
   Assesses out-of-sample generalization using `:spatial_block`, `:temporal_block`, `:lolo` (leave-one-location-out), and `:temporal_forward_chain` to prevent spatial autocorrelation leakage.
 
 - **Modular Bayesian DAG Pipeline & Cross-Mesh Resharding (`src/pipeline.jl`)**:
-  - Declarative workflow orchestrator (`bstm_pipeline`) running sequential multi-tier cut-posterior models.
+  - Declarative workflow orchestrator (`TethysBayes_pipeline`) running sequential multi-tier cut-posterior models.
   - Linear geometric transfer operators ($P \in \mathbb{R}^{N_{\text{dest}} \times N_{\text{src}}}$) mapping spatial latent fields across mismatched irregular polygonal tessellations via `:area_weighted`, `:gaussian_kernel`, and `:inverse_distance` weighting (`compute_network_transfer_matrix`).
   - Full Monte Carlo sample matrix transformation ($U_{\text{dest}} = P U_{\text{src}}$) preserving non-Gaussian posterior geometry (`reshard_spatial_field`, `summarize_sample_matrix`).
   - Canonical master mesh harmonization across all tiers with automated DuckDB persistence.
 - **Continuous Surface Derivatives & Differential Geometry (`src/derivatives.jl`)**:
-  - Exact analytical gradients ($\nabla z$), geomorphometric slopes ($\|\nabla z\|$, $\arctan\|\nabla z\|$), compass aspects, Hessians ($z_{xx}, z_{yy}, z_{xy}$), Laplacians ($\nabla^2 z$), profile/planform curvatures ($k_{\text{prof}}, k_{\text{plan}}$), and circular Bessel Bathymetric Position Indices ($\text{BPI}_r$) across `RFF`, `SpectralGP`, `WaveletGP`, `SPDE`, `PSpline`, and `TPS` (`bstm_surface_derivatives`).
+  - Exact analytical gradients ($\nabla z$), geomorphometric slopes ($\|\nabla z\|$, $\arctan\|\nabla z\|$), compass aspects, Hessians ($z_{xx}, z_{yy}, z_{xy}$), Laplacians ($\nabla^2 z$), profile/planform curvatures ($k_{\text{prof}}, k_{\text{plan}}$), and circular Bessel Bathymetric Position Indices ($\text{BPI}_r$) across `RFF`, `SpectralGP`, `WaveletGP`, `SPDE`, `PSpline`, and `TPS` (`TethysBayes_surface_derivatives`).
 - **Errors-in-Variables (EIV) Covariate Priors (`src/model.jl`)**:
   - Propagate upstream posterior uncertainty directly into downstream linear predictors as latent Gaussian measurement errors: $x_i \sim \mathcal{N}(\mu_{x, i}, \sigma^2_{x, i})$ via `fixed(cov, error_sd=:cov_sd)` or `eiv(cov, cov_sd)`.
 
@@ -79,11 +79,11 @@ m = @bstm(
 
 ## Installation & Setup
 
-`bstm` is structured as a self-contained Julia project environment. Clone the repository and load the module:
+`TethysBayes` is structured as a self-contained Julia project environment. Clone the repository and load the module:
 
 ```bash
-git clone https://github.com/mum0n/bstm.git
-bstm_location = "where/you/saved/bstm"  # e.g. bstm_location = "C:/home/jae/projects/bstm"
+git clone https://github.com/mum0n/TethysBayes.git
+TethysBayes_location = "where/you/saved/TethysBayes"  # e.g. TethysBayes_location = "C:/home/jae/projects/TethysBayes"
 
 ```
 
@@ -91,7 +91,7 @@ Start Julia within the repository:
 
 ```julia
 #  your working directory (where data, etc are found)
-myworkdir = "c:/home/jae/projects/bstm"
+myworkdir = "c:/home/jae/projects/TethysBayes"
 
 mkpath(myworkdir)
 cd(myworkdir) 
@@ -102,17 +102,17 @@ Pkg.instantiate()
 
 # this will install required packages, you will have to rerun this several times to get all the dependencies worked out. 
 # manually install and dependencies that get interrupted, if needed restart julia as well
-bstm_location = "c:/home/jae/projects/bstm"
-include( joinpath(bstm_location, "src", "bstm.jl") ) 
-using .bstm  # the "." means load the module in the current session, not importing it as a package.  
+TethysBayes_location = "c:/home/jae/projects/TethysBayes"
+include( joinpath(TethysBayes_location, "src", "TethysBayes.jl") ) 
+using .TethysBayes  # the "." means load the module in the current session, not importing it as a package.  
 
 # or, you can of course install and import as a package too:  
-# Pkg.add(url="https://github.com/mum0n/bstm.git"); using bstm
+# Pkg.add(url="https://github.com/mum0n/TethysBayes.git"); using TethysBayes
 
 # or to develop:
-cd(bstm_location)
+cd(TethysBayes_location)
 ] dev .
-using bstm
+using TethysBayes
 
 
 ```
@@ -128,12 +128,12 @@ Fit a hierarchical BYM2 spatial model with an AR1 temporal trend, extract diagno
 Random.seed!(42)
 
 # 1. Load benchmark dataset (56 Scottish districts across time)
-data_scot = bstm_data(); # Scottish Lip Cancer
+data_scot = TethysBayes_data(); # Scottish Lip Cancer
 df = data_scot.data # dataframe with response and covariates
 W = data_scot.au.W  # graph (adjacency matrix)
 
 # 2. Specify Hierarchical Spatiotemporal Model
-m = @bstm(
+m = @tbm(
     likelihood(y, family=poisson, log_offsets=log_offsets) ~
         intercept() +
         fixed(cov1) +
@@ -151,12 +151,12 @@ println("Model WAIC: ", res.metrics.waic)
 display(res.parameters)
 
 # 5. Generate, Display, and Export Diagnostic Plots
-plots_res = bstm_plots(res; au=data_scot.au, save_dir="output/plots");
+plots_res = TethysBayes_plots(res; au=data_scot.au, save_dir="output/plots");
 display(plots_res.plots[:spatial])
 
 # 6. Persist Unified Bundle to DuckDB and JLD2
-save_bstm_bundle("output/scot_lip_model", m, chn, res; au=data_scot.au);
-bn_bundle = load_bstm_bundle("output/scot_lip_model") ;
+save_TethysBayes_bundle("output/scot_lip_model", m, chn, res; au=data_scot.au);
+bn_bundle = load_TethysBayes_bundle("output/scot_lip_model") ;
 keys(bn_bundle)
 
 # 7. Query prior
@@ -205,7 +205,7 @@ df.s_idx = st_data.s_idx ;
 df.year_idx = st_data.t_idx ;
 
 # 3. Fit Spatiotemporal Model with BYM2 + AR1
-m = @bstm(
+m = @tbm(
     likelihood(y, family=poisson) ~
         intercept() +
         fixed(elevation) +
@@ -219,7 +219,7 @@ m = @bstm(
 # 4. Process Results and Generate Plots
 chn = sample(m, NUTS(), 300; progress=false);
 res = model_results_comprehensive(m, chn);
-plots_res = bstm_plots(res; data=df, au=st_data.au_spatial);
+plots_res = TethysBayes_plots(res; data=df, au=st_data.au_spatial);
 
 p_map = plots_res.plots[:spatial]
 p_ppc = plots_res.plots[:posterior_predictive_check]
@@ -233,11 +233,11 @@ plot(p_map, p_ppc, layout=(1, 2), size=(1000, 450))
 
 ```julia
 
-data_scot = bstm_data(); # Scottish Lip Cancer
+data_scot = TethysBayes_data(); # Scottish Lip Cancer
 df = data_scot.data # dataframe with response and covariates
 W = data_scot.au.W  # graph (adjacency matrix)
 
-m = @bstm(
+m = @tbm(
     # Multivariate joint likelihood: specify two outputs and their families
     likelihood((y, y_rate),
                family = (poisson, gaussian),
@@ -264,7 +264,7 @@ m = @bstm(
 Leverage DuckDB for relational SQL analytics and resume sampling on previously saved models:
 
 ```julia
-using bstm
+using TethysBayes
 
 # 1. Query previously saved model results directly via SQL
 df_high_risk = query_duckdb("output/scot_lip_model.duckdb", """
@@ -279,7 +279,7 @@ display(df_high_risk)
 priors = extract_posterior_priors("output/scot_lip_model.duckdb")
 
 # 3. Load model state and extend MCMC chain with 500 additional samples
-bundle = load_bstm_bundle("output/scot_lip_model")
+bundle = load_TethysBayes_bundle("output/scot_lip_model")
 chn_extended = extend_sampling(bundle.model, bundle.chain, 500; progress=false)
 ```
 
@@ -287,13 +287,13 @@ chn_extended = extend_sampling(bundle.model, bundle.chain, 500; progress=false)
 
 ### Example 5: Modular Hierarchical DAG Pipeline & Surface Derivatives
 
-Execute a multi-tier ecological workflow with analytical surface derivatives, cross-mesh resharding, Errors-in-Variables priors, and DuckDB table persistence. This was the `aegis` workflow, but with `bstm` and some major enhancements enabled by the Julia ecosystem.
+Execute a multi-tier ecological workflow with analytical surface derivatives, cross-mesh resharding, Errors-in-Variables priors, and DuckDB table persistence. This was the `aegis` workflow, but with `TethysBayes` and some major enhancements enabled by the Julia ecosystem.
 
 ```julia
-using bstm, DataFrames, Turing
+using TethysBayes, DataFrames, Turing
 
 # 1. Declarative Multi-Tier Pipeline Execution
-pipe_result = bstm_pipeline(
+pipe_result = TethysBayes_pipeline(
     :depth => (
         formula = "likelihood(depth) ~ intercept() + random(s_x, s_y, model=rff, n_features=25)",
         data = df_bathy,
@@ -328,22 +328,22 @@ There is a lot more functionality available. Comprehensive guides and technical 
 
 - [**Integrated Hierarchical Workflows & ADR Telemetry** (`docs/hierarchical_workflow/hierarchical_workflow.md`)](docs/hierarchical_workflow/hierarchical_workflow.md):
   Directed Acyclic Graphs (DAGs), multi-scale cross-mesh resharding, Full Monte Carlo matrix transformations, Errors-in-Variables (EIV) priors, second-last tier Habitat Suitability (HSI) determination, analytical surface derivatives, Advection-Diffusion-Reaction (ADR) population dynamics, Lagrangian telemetry, and DuckDB SQL analytics, Tempered Power Posteriors (fractional feedback $\lambda$), full empirical spatial covariance in EIV, hybrid continuous basis-polygon quadrature resharding, continuous soft-sigmoid physiological HSI, and coupled oceanographic-active advection.
-- [**Architectural & Methodological Overview** (`docs/bstm_overview.md`)](docs/bstm_overview.md):
+- [**Architectural & Methodological Overview** (`docs/TethysBayes.md`)](docs/TethysBayes.md):
   Design principles, formula syntax, component algebra, prior systems, and inference engines.
-- [**Technical API Reference** (`docs/bstm_api.md`)](docs/bstm_api.md):
+- [**Technical API Reference** (`docs/TethysBayes_api.md`)](docs/TethysBayes_api.md):
   Developer reference for the `ComponentModel` lifecycle, `ParamRegistry`, likelihood distributions, plotting functions, and AST parser.
-- [**Spatial & Spatiotemporal Partitioning Guide** (`docs/bstm_spatial_partitioning.md`)](docs/bstm_spatial_partitioning.md):
-  Mathematical formulations, Lloyd's relaxation, hexagonal geometry, MAUP mitigation, island bridging, cross-mesh transfer operators, and BYM2 spectral scaling. The engine itself lives in [`GeoPartitioning`](../GeoPartitioning); this document is mirrored there as `docs/spatial_partitioning.md`.
-- [**Input / Output & Persistence Guide** (`docs/bstm_input_output.md`)](docs/bstm_input_output.md):
+- [**Spatial & Spatiotemporal Partitioning Guide** (`docs/TethysBayes_spatial_partitioning.md`)](docs/TethysBayes_spatial_partitioning.md):
+  Mathematical formulations, Lloyd's relaxation, hexagonal geometry, MAUP mitigation, island bridging, cross-mesh transfer operators, and BYM2 spectral scaling. The engine itself lives in [`Tethys`](../Tethys); this document is mirrored there as `docs/spatial_partitioning.md`.
+- [**Input / Output & Persistence Guide** (`docs/TethysBayes_input_output.md`)](docs/TethysBayes_input_output.md):
   Two-tier persistence architecture, JLD2 model serialization, DuckDB analytical results storage, sample extension, SQL analytics, and GIS export.
-- [**Custom Components & Spatial SEIR Modeling Guide** (`docs/bstm_custom.md`)](docs/bstm_custom.md):
+- [**Custom Components & Spatial SEIR Modeling Guide** (`docs/TethysBayes_custom.md`)](docs/TethysBayes_custom.md):
   Mechanistic process modeling, raw Turing code injection with `custom()`, first-class `ComponentModel` implementation, and spatial SEIR disease dynamics. OR, create a new ComposedModel specific to your needs by extending existing components. Use the many examples provided in 'src/composed/' as a guide. 
 
 ---
 
 ## Citation & References
 
-If you use `bstm` in your research, please cite:
+If you use `TethysBayes` in your research, please cite:
 
 1. **Besag, J.** (1974). Spatial interaction and the statistical analysis of lattice systems. *Journal of the Royal Statistical Society: Series B*, 36(2), 192–225.
 2. **Hooten, M. B., & Hefley, T. J.** (2019). *Bringing Bayesian Models to Life*. CRC Press.

@@ -1,14 +1,9 @@
 # ==============================================================================
-# BSTM Test Suite: Shared Test Helpers and Fixtures
+# TethysBayes Test Suite: Shared Test Helpers and Fixtures
 # ==============================================================================
 
 using Test
-try
-    using bstm
-catch
-    include(joinpath(@__DIR__, "..", "src", "bstm.jl"))
-    using .bstm
-end
+using TethysBayes
 
 using DynamicPPL
 # `AbstractMCMC` is referenced explicitly in test_models.jl. A project's direct
@@ -41,24 +36,24 @@ const PROJECT_SCRATCH_ROOT = let root = normpath(joinpath(@__DIR__, "..", "work"
 end
 
 """
-    scratch_dir(prefix="bstm") -> String
+    scratch_dir(prefix="TethysBayes") -> String
 
 A unique directory inside `work/test_scratch`, for test artifacts.
 """
-scratch_dir(prefix::AbstractString="bstm") = mktempdir(PROJECT_SCRATCH_ROOT; prefix=prefix)
+scratch_dir(prefix::AbstractString="TethysBayes") = mktempdir(PROJECT_SCRATCH_ROOT; prefix=prefix)
 
 """
-    scratch_path(name; prefix="bstm") -> String
+    scratch_path(name; prefix="TethysBayes") -> String
 
 A unique path inside `work/test_scratch` for a single test artifact.
 """
-function scratch_path(name::AbstractString; prefix::AbstractString="bstm")
+function scratch_path(name::AbstractString; prefix::AbstractString="TethysBayes")
     d = mktempdir(PROJECT_SCRATCH_ROOT; prefix=prefix)
     return joinpath(d, name)
 end
 
-# `Plots`, `StatsPlots` and `ColorSchemes` are *weak* dependencies of bstm (they back the
-# `BSTMPlotsExt` package extension) and are therefore not present in the main project
+# `Plots`, `StatsPlots` and `ColorSchemes` are *weak* dependencies of TethysBayes (they back the
+# `TethysBayesPlotsExt` package extension) and are therefore not present in the main project
 # environment. Only the `:persistence` test segment exercises the plotting subsystem, so
 # these are imported softly: every other segment stays runnable without the optional
 # plotting stack installed. See `test/Project.toml` for the full plotting test env.
@@ -79,7 +74,7 @@ if !HAS_PLOTTING
           "the `:persistence` segment will skip its plotting testset."
 end
 
-const bstm_Likelihood = bstm.bstm_Likelihood
+const TethysBayes_Likelihood = TethysBayes.TethysBayes_Likelihood
 
 """
     create_chain_adj_matrix(n::Int)
@@ -162,7 +157,7 @@ end
 #
 # All 20 marginalized components were tested with a copy-pasted four-line tail:
 #
-#     eff = bstm.get_effects(comp, chain, spec, M, nothing)
+#     eff = TethysBayes.get_effects(comp, chain, spec, M, nothing)
 #     @test length(eff.structured) == 1
 #     @test size(eff.structured[1]) == (5, 3)
 #     @test !all(iszero, eff.structured[1])
@@ -184,7 +179,7 @@ component-specific assertions on top.
 function check_marginalized_reconstruction(
     component, chain, spec, M; n_latent::Integer=5, n_draws::Integer=3
 )
-    eff = bstm.get_effects(component, chain, spec, M, nothing)
+    eff = TethysBayes.get_effects(component, chain, spec, M, nothing)
     @test length(eff.structured) == 1
     @test size(eff.structured[1]) == (n_latent, n_draws)
     # Nonzero is the load-bearing assertion here -- see the note above.

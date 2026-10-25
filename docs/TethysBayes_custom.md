@@ -1,26 +1,26 @@
 ---
-title: "Custom Components & Non-Linear Spatial Epidemiological Modeling in BSTM"
+title: "Custom Components & Non-Linear Spatial Epidemiological Modeling in TethysBayes"
 format: html
 ---
 
-# Custom Components & Non-Linear Spatial Epidemiological Modeling in BSTM
+# Custom Components & Non-Linear Spatial Epidemiological Modeling in TethysBayes
 
 ## 1. Introduction & Overview
 
-While `bstm` provides 45+ built-in statistical components (GMRFs, Gaussian processes, splines, autoregressive time series), complex real-world systems often require **domain-specific mechanistic processes**. In epidemiology, ecology, and environmental science, observations are frequently governed by coupled non-linear differential or difference equations, such as epidemic compartmental models (SIR, SEIR, SEIRS).
+While `TethysBayes` provides 45+ built-in statistical components (GMRFs, Gaussian processes, splines, autoregressive time series), complex real-world systems often require **domain-specific mechanistic processes**. In epidemiology, ecology, and environmental science, observations are frequently governed by coupled non-linear differential or difference equations, such as epidemic compartmental models (SIR, SEIR, SEIRS).
 
-The `bstm` framework provides two complementary avenues for implementing custom logic:
+The `TethysBayes` framework provides two complementary avenues for implementing custom logic:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                           Custom Modeling Pathways in BSTM                              │
+│                           Custom Modeling Pathways in TethysBayes                              │
 ├───────────────────────────────────────────┬─────────────────────────────────────────────┤
 │  Pathway A: The custom() Formula Module   │  Pathway B: First-Class ComponentModel Type │
 ├───────────────────────────────────────────┼─────────────────────────────────────────────┤
 │  - Quick prototyping & ad-hoc experiments │  - Reusable, production-grade extensions    │
 │  - Raw Turing.jl code fragment injection  │  - Formal 4-method interface contract       │
 │  - Optional custom reconstruct_func       │  - Full ParamRegistry & type safety         │
-│  - Embedded directly inside @bstm(...)    │  - Registered in COMPONENT_TYPE_REGISTRY    │
+│  - Embedded directly inside @tbm(...)    │  - Registered in COMPONENT_TYPE_REGISTRY    │
 └───────────────────────────────────────────┴─────────────────────────────────────────────┘
 ```
 
@@ -260,7 +260,7 @@ function seir_reconstruct(m::Custom, chain, spec::NamedTuple, M::NamedTuple, PS:
 end
 ```
 
-### 3.3. Fitting the Model with `@bstm`
+### 3.3. Fitting the Model with `@tbm`
 
 ```julia
 # Technical precomputes passed via kwargs
@@ -272,7 +272,7 @@ technical_dict = Dict(
 )
 
 # Fit model with SEIR dynamics + BYM2 spatial random effect
-m = @bstm(
+m = @tbm(
     likelihood(cases, family=poisson) ~ 
         intercept() + 
         custom(code_fragment=seir_turing_code, params=Dict(:reconstruct_func => seir_reconstruct)) +
@@ -316,7 +316,7 @@ function SpatialSEIR(;
     return SpatialSEIR(beta_local, beta_spatial, sigma_lat, gamma_rec, rho_rep)
 end
 
-# Register in bstm component registry
+# Register in TethysBayes component registry
 COMPONENT_TYPE_REGISTRY[:spatial_seir] = SpatialSEIR
 COMPONENT_CONSTRUCTORS[:spatial_seir] = (p, params) -> SpatialSEIR(
     get(p, :beta_local, truncated(Normal(0.4, 0.1), 0.0, 2.0)),
@@ -423,7 +423,7 @@ end
 ## 5. Complete Runnable Walkthrough: Spatial SEIR Outbreak Modeling
 
 ```julia
-using bstm, DataFrames, Random, Plots
+using TethysBayes, DataFrames, Random, Plots
 
 # 1. Setup Synthetic Geography & Population
 rng = MersenneTwister(42)
@@ -492,7 +492,7 @@ technical_data = Dict(
     :init_infected => init_infected
 )
 
-m = @bstm(
+m = @tbm(
     likelihood(cases, family=poisson) ~ 
         intercept() + 
         custom(code_fragment=seir_turing_code, params=Dict(:reconstruct_func => seir_reconstruct)) + 
@@ -508,7 +508,7 @@ chn = sample(m, NUTS(100, 0.65), 300; progress=false)
 res = model_results_comprehensive(m, chn; au=au)
 
 # 5. Persist Unified Bundle to DuckDB and JLD2
-save_bstm_bundle("output/seir_spatial_outbreak", m, chn, res; au=au)
+save_TethysBayes_bundle("output/seir_spatial_outbreak", m, chn, res; au=au)
 
 # 6. Query Epidemiological Parameter Posteriors via SQL
 df_params = query_duckdb("output/seir_spatial_outbreak.duckdb", """
@@ -535,5 +535,5 @@ plot(p_map, p_graph, layout=(1, 2), size=(1000, 450))
    The `get_updates` generator wraps custom code in a `let ... end` block to prevent variable shadowing across multiple formula terms.
 3. **Bound Flow Terms**:
    Ensure flow terms do not exceed compartment reserves (e.g. `flow_SE = min(lambda * S, S)` and `max(..., 0.0)`) to prevent negative population counts.
-4. **Use `save_bstm_bundle` for Archiving**:
+4. **Use `save_TethysBayes_bundle` for Archiving**:
    Guarantees that both the dynamic Turing simulation code in JLD2 and the relational time series predictions in DuckDB are persisted together.

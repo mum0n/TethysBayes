@@ -2,15 +2,15 @@
     data.jl
 
 Monolithic synthetic data generator and built-in spatiotemporal benchmark datasets
-for Bayesian Spatio-Temporal Models (BSTM).
+for Bayesian Spatio-Temporal Models (TethysBayes).
 
 Version: v1.0.0
 """
 
 """
-    bstm_data(type="scottish_lip"; kwargs...)
+    TethysBayes_data(type="scottish_lip"; kwargs...)
 
-Consolidated synthetic and benchmark dataset generator for BSTM models.
+Consolidated synthetic and benchmark dataset generator for TethysBayes models.
 
 # Supported Dataset Types (`type`):
 - `"scottish_lip"` (Default): Scottish Lip Cancer spatiotemporal dataset (primary & nested)
@@ -68,7 +68,7 @@ Consolidated synthetic and benchmark dataset generator for BSTM models.
 - `use_effort::Bool = false`: Include effort covariate.
 - `use_removal::Bool = false`: Include removal covariate.
 """
-function bstm_data(
+function TethysBayes_data(
     type_pos::Union{String, Symbol, Nothing} = nothing;
     type::Union{String, Symbol, Nothing} = nothing,
     s_N::Int = 10,
@@ -177,7 +177,7 @@ function bstm_data(
             end
         end
 
-        W = bstm_data("scottish_lip_neighbours")
+        W = TethysBayes_data("scottish_lip_neighbours")
 
         au = assign_spatial_units_inferred(W)
 
@@ -195,8 +195,8 @@ function bstm_data(
         println("Generating new spatiotemporal dataset...")
         Random.seed!(actual_seed)
 
-        W  = bstm_data("scottish_lip_neighbours")
-        au = bstm_data("scottish_lip_au")
+        W  = TethysBayes_data("scottish_lip_neighbours")
+        au = TethysBayes_data("scottish_lip_au")
         p_centroids = au.centroids
 
         y_orig = [
@@ -330,8 +330,8 @@ function bstm_data(
         println("Generating new spatiotemporal dataset...")
         Random.seed!(actual_seed)
 
-        W  = bstm_data("scottish_lip_neighbours")
-        au = bstm_data("scottish_lip_au")
+        W  = TethysBayes_data("scottish_lip_neighbours")
+        au = TethysBayes_data("scottish_lip_au")
         p_centroids = au.centroids
 
         n_districts = size(W, 2)

@@ -2,7 +2,7 @@
     parameters.jl
 
 Centralized parameter registry, semantic descriptor management, and chain sample extraction
-for Bayesian Spatio-Temporal Models (BSTM).
+for Bayesian Spatio-Temporal Models (TethysBayes).
 
 Version: v1.0.0
 """
